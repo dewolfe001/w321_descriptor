@@ -1,0 +1,136 @@
+.edit-attachment {
+  width: fit-content;
+  float: left;
+}
+
+.describe-attachment {
+  width: fit-content;
+  float: left;
+}
+
+.delete-attachment {
+    clear: both;
+    display: block !important;
+    float: none;
+}
+
+.attachment-details {
+    position: relative;
+}
+
+#attachment-details-alt-text,
+#attachment-details-title {
+    margin-bottom: 72px;
+}
+
+#attachment-details-caption,
+#attachment-details-description {
+    min-height: 160px;
+    margin-bottom: 72px;
+}
+
+#attachment-details-alt-text-suggest,
+#attachment-details-title-suggest,
+#attachment-details-caption-suggest,
+#attachment-details-description-suggest {
+    position: absolute;
+    z-index: 170000;
+    padding: 4px;
+    background-color: #eeeeee;
+    color: #242;
+    box-shadow: 1px 1px 6px rgba(32, 64, 32, 0.5);
+    border-radius: 4px;
+    overflow: hidden;
+    max-height: 248px;
+    height: fit-content !important;
+}
+
+#attachment-details-alt-text-suggest em,
+#attachment-details-title-suggest em,
+#attachment-details-caption-suggest em,
+#attachment-details-description-suggest em {
+    right: 4px;
+    top: 4px;
+    position: absolute;
+    font-style: normal;
+}
+
+
+#attachment-details-alt-text-suggest span,
+#attachment-details-title-suggest span,
+#attachment-details-caption-suggest span,
+#attachment-details-description-suggest span {
+    color: #000;
+    display: block;
+    width: calc(100% - 16px);
+    padding: 4px;
+    border: 1px solid #888;
+    background-color: #fff;
+    text-align: left;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+#attachment-details-alt-text-suggest a,
+#attachment-details-title-suggest a,
+#attachment-details-caption-suggest a,
+#attachment-details-description-suggest a {
+    color: #242;
+    font-weight: bold;
+    padding: 4px;
+}
+
+#alttext-problem,
+#title-problem,
+#caption-problem,
+#description-problem {
+    display: none !important;
+}
+
+/* animation */
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+        filter: brightness(100%);
+    }
+    20% {
+        opacity: 0.96;
+        filter: brightness(102%);
+    }    
+    50% {
+        opacity: 0.9;
+        filter: brightness(120%);
+    }
+    80% {
+        opacity: 0.96;
+        filter: brightness(102%);
+    }        
+    100% {
+        opacity: 1;
+        filter: brightness(100%);
+    }
+}
+
+.pulsing {
+    animation: pulse 1.5s infinite ease-in-out;
+    animation-delay: 0.1s; /* Add a delay of 1 second */    
+}
+
+
+@keyframes throb {
+  0% { background-color: rgb(246, 247, 247); color: currentColor; font-weight: 700; }
+  40% { background-color: rgb(250, 251, 251, 1); color: #663; font-weight: 600; }  
+  50% { background-color: rgb(250, 251, 251, 0); color: rgba(250, 250, 200, 0); font-weight: 500; }  
+  60% { background-color: rgb(250, 251, 251, 1); color: #663; font-weight: 600; }
+  100% { background-color: rgb(246, 247, 247); color: currentColor; font-weight: 700; }
+}
+
+.throbbing {
+    animation: throb 1.5s infinite ease-in-out;    
+    animation-delay: 0.1s; /* Add a delay of 1 second */    
+}
+
+.throbbing:after {
+    content: "... working...";
+}
