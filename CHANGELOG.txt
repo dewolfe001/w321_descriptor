@@ -1,3 +1,6 @@
+2025-01-27 - version 1.0.2
+* Fixed - JSON decode bug
+
 2025-01-26 - version 1.0.1
 * Added - Error handling for unregistered account
 * Added - Error handling for no access key
