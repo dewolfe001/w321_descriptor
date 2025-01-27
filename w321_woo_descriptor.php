@@ -3,7 +3,7 @@
  * Plugin Name: WP Image Descriptor
  * Plugin URI:  https://descriptor.web321.co/
  * Description: Describes product images for WooCommerce products, populates media meta, and provides a "Try again" feature for generating new descriptions.
- * Version:     1.0.0
+ * Version:     1.0.1
  * Author: dewolfe001
  * Author URI: https://web321.co/
  * Text Domain: woo-descriptor
@@ -15,7 +15,7 @@ defined('ABSPATH') || exit;
 // Define plugin constants.
 define( 'WD_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WD_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'WD_VERSION', '1.0.0' );
+define( 'WD_VERSION', '1.0.1' );
 define( 'WD_NONCE_ACTION', 'descriptor_action' );
 define( 'WD_API_ENDPOINT', 'https://descriptor.web321.co/wp-json/woo-descriptor/v1' );
 
@@ -65,9 +65,16 @@ class WooDescriptor {
                 true
             );
 
+            $account_key = get_option( 'wd_account_key', '' );
+            $account_status = 1;
+            if ( empty( $account_key ) ) {
+                $account_status = -1;                                
+            }
+
             $nonce = wp_create_nonce(WD_NONCE_ACTION);
             wp_localize_script('woo-descriptor-admin-js', 'w321descritptor', [
                 'ajax_url' => admin_url('admin-ajax.php'),
+                'account_status' => $account_status, 
                 'descriptor_nonce'    => $nonce
             ]);
             
@@ -277,9 +284,15 @@ class WooDescriptor {
         
         // Decode the response
         $response_body = wp_remote_retrieve_body($response);
+        if ($response_body == '{"error":"Invalid or expired key."}') {
+            wp_send_json_error(['error' => 'Invalid access key.'], 500);
+            return;            
+        }
+        
+        error_log("line 287 - ".print_r($response_body, TRUE));
+
         $api_result = descriptor_process_api_response($response_body);
 
-        // error_log("line 250 - ".print_r($response_body, TRUE));
         error_log("line 251 - ".print_r($api_result, TRUE));
 
         $response_data = json_decode($api_result, true);
@@ -437,7 +450,8 @@ function descriptor_extract_nested_json_wp($api_response) {
  */
 function descriptor_process_api_response($api_response) {
     $result = descriptor_extract_nested_json_wp($api_response);
-    
+
+    error_log('JSON result: ' . print_r($api_response, TRUE));    
     if (is_wp_error($result)) {
         // Handle error
         error_log('JSON extraction failed: ' . $result->get_error_message());

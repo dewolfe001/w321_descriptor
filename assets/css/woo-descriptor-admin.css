@@ -18,11 +18,19 @@
     position: relative;
 }
 
+#attachment-details-two-column-alt-text,
+#attachment-details-one-column-alt-text,
+#attachment-details-two-column-title,
+#attachment-details-one-column-title,
 #attachment-details-alt-text,
 #attachment-details-title {
     margin-bottom: 72px;
 }
 
+#attachment-details-two-column-caption,
+#attachment-details-one-column-caption,
+#attachment-details-two-column-description,
+#attachment-details-one-column-description,
 #attachment-details-caption,
 #attachment-details-description {
     min-height: 160px;
@@ -85,6 +93,19 @@
 #caption-problem,
 #description-problem {
     display: none !important;
+}
+
+.describe-help {
+    margin-top: 12px;
+    width: fit-content;
+    display: block;
+    padding: 6px;
+    border: 1px solid #333;
+    border-radius: 6px;
+    background-color: #ccc;
+    color: #800;
+    font-weight: bold;
+    text-decoration: none;
 }
 
 /* animation */

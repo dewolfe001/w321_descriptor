@@ -71,15 +71,43 @@ jQuery(document).ready(function($) {
 
         // $(this).parent().fadeOut('fast');
     });
+
+    $(document).on('click', '.describe-help', function(e) {
+        $('.describe-help').fadeOut('slow');
+        return;
+    });
     
     // Whenever someone clicks "Describe Image"...
-    $(document).on('click', '.describe-attachment', function(e){
+    $(document).on('click', '.describe-attachment, .describe-link', function(e){
         e.preventDefault();
+        $('.describe-help').hide();
 
+        if (w321descritptor.account_status != 1) {
+            const helpout = '<br/><a href="https://descriptor.web321.co/dashboard/" class="describe-help" target="_blank">You need to finish your Descriptor setup. - Click Here</a>';
+            $(this).parent().append(helpout); 
+            $(this).css('margin-bottom', '16px');
+            $('.describe-help').fadeIn('fast');
+            return;
+        }
+     
         $(this).addClass('throbbing');
 
         const $link         = $(this);
-        const attachmentId  = parseInt($link.data('attachment-id'), 10);
+        
+        var editAttachmentUrl = $(this).closest('.details').find('.edit-attachment').attr('href');
+        var attachmentId  = parseInt($link.data('attachment-id'), 10);
+
+        if (editAttachmentUrl) {
+            // Use URLSearchParams to parse the URL and get the `post` parameter
+            const urlParams = new URLSearchParams(editAttachmentUrl.split('?')[1]); // Get query part of the URL
+            attachmentId = urlParams.get('post'); // Extract the `post` parameter
+        }
+        else {
+            // the upload link itsef
+            editAttachmentUrl = $(this).attr('href');
+            const urlParams = new URLSearchParams(editAttachmentUrl.split('?')[1]); // Get query part of the URL
+            attachmentId = urlParams.get('item'); // Extract the `post` parameter            
+        }
 
         // go to the server locally with admin-ajax.php 
 		// const descriptions = get_descriptions(attachmentId);
@@ -89,126 +117,178 @@ jQuery(document).ready(function($) {
 
             $(this).removeClass('throbbing');
             if (descriptions.alt.length > 1) {
-                const $alttext = jQuery('#attachment-details-alt-text');
-                if ($alttext.length) {
-                    const alttextoffset = $alttext.offset();
-                    const alttextleft   = alttextoffset.left;
-                    const alttexttop    = alttextoffset.top;
+                const possibleAltText = [
+                    'attachment-details-alt-text',
+                    'attachment-details-two-column-alt-text',
+                    'attachment-details-one-column-alt-text'
+                    ];
+
+                    // Use a jQuery selector to find elements with any of the IDs
+                    const $alttext = $(possibleAltText.map(id => `#${id}`).join(','));
                 
-                    // console.log('Alt Text left:', alttextleft, ' top:', alttexttop);
-                
-                    const $suggestAltDiv = jQuery('<div>', {
-                        id: 'attachment-details-alt-text-suggest',
-                        css: {
-                            /* left: descriptionLeft + 'px', 
-                            top: (descriptionTop - 32) + 'px', */ 
-                            width: ($alttext.parent().width() - 10).toString() + 'px',
-                        }
-                    });
-                
-                    $alttext.after($suggestAltDiv);
-                    $('#attachment-details-alt-text-suggest').fadeIn(100);
-                    $suggestAltDiv.addClass('wdescipt');
-                    var detailsAltSuggest = descriptions.alt;
-                    $suggestAltDiv.html('<strong>Alt Text</strong><em>X</em><br/><span>' + detailsAltSuggest + '</span><br/><a href="#" id="alttext-replace" class="wdescript-replace">Use</a> <a href="#" id="alttext-append" class="wdescript-append">Append</a> <a href="#" id="alttext-retry" class="wdescript-retry">Try Again</a> <a href="#" id="alttext-problem">+</a>');
-                }
+                    // Check if we found any matching elements
+                    if ($alttext.length > 0) {
+                        // Perform your logic on the matched element(s)
+                        $alttext.each(function() {
+                            console.log('Found alt text field:', $(this));
+                            // Example: Add a placeholder
+                            const alttextoffset = $(this).offset();
+                            const alttextleft   = alttextoffset.left;
+                            const alttexttop    = alttextoffset.top;
+                        
+                            // console.log('Alt Text left:', alttextleft, ' top:', alttexttop);
+                        
+                            const $suggestAltDiv = jQuery('<div>', {
+                                id: 'attachment-details-alt-text-suggest',
+                                css: {
+                                    /* left: descriptionLeft + 'px', 
+                                    top: (descriptionTop - 32) + 'px', */ 
+                                    width: ($(this).parent().width() - 10).toString() + 'px',
+                                }
+                            });
+                        
+                            $(this).after($suggestAltDiv);
+                            $('#attachment-details-alt-text-suggest').fadeIn(100);
+                            $suggestAltDiv.addClass('wdescipt');
+                            var detailsAltSuggest = descriptions.alt;
+                            $suggestAltDiv.html('<strong>Alt Text</strong><em>X</em><br/><span>' + detailsAltSuggest + '</span><br/><a href="#" id="alttext-replace" class="wdescript-replace">Use</a> <a href="#" id="alttext-append" class="wdescript-append">Append</a> <a href="#" id="alttext-retry" class="wdescript-retry">Try Again</a> <a href="#" id="alttext-problem">+</a>');
+							});
+                    } else {
+                        console.log('No alt text field found.');
+                    }
             }
             if (descriptions.title.length > 1) {
-                const $title = jQuery('#attachment-details-title');
-                if ($title.length) {
-                    const titleoffset = $title.offset();
-                    const titleleft   = titleoffset.left;
-                    const titletop    = titleoffset.top;
-                
-                    // console.log('Title left:', titleleft, ' top:', titletop);
-                
-                    const $suggestTitleDiv = jQuery('<div>', {
-                        id: 'attachment-details-title-suggest',
-                        css: {
-                            /* left: descriptionLeft + 'px',  
-                            top: (titletop - 32) + 'px',*/ 
-                            width: ($title.parent().width() - 10).toString() + 'px',
-                        }
-                    });
-                
-                    $title.after($suggestTitleDiv);
-                    $('#attachment-details-title-suggest').fadeIn(120);
-                    $suggestTitleDiv.addClass('wdescipt');
-                    var detailsTitleSuggest = descriptions.title;
-                    $suggestTitleDiv.html('<strong>Title</strong><em>X</em><br/><span>' + detailsTitleSuggest + '</span><br/><a href="#" id="title-replace" class="wdescript-replacet">Use</a> <a href="#" id="title-append" class="wdescript-appendt">Append</a> <a href="#" id="title-retry" class="wdescript-retry">Try Again</a> <a href="#" id="title-problem">+</a>');
-                }
+                const possibleTitle = [
+                    'attachment-details-title',
+                    'attachment-details-two-column-title',
+                    'attachment-details-one-column-title'
+                    ];
+
+				const $title = $(possibleTitle.map(id => `#${id}`).join(','));
+			
+				// Check if we found any matching elements
+				if ($title.length > 0) {
+					// Perform your logic on the matched element(s)
+					$title.each(function() {
+						const titleoffset = $(this).offset();
+						const titleleft   = titleoffset.left;
+						const titletop    = titleoffset.top;
+					
+						// console.log('Title left:', titleleft, ' top:', titletop);
+					
+						const $suggestTitleDiv = jQuery('<div>', {
+							id: 'attachment-details-title-suggest',
+							css: {
+								/* left: descriptionLeft + 'px',  
+								top: (titletop - 32) + 'px',*/ 
+								width: ($(this).parent().width() - 10).toString() + 'px',
+							}
+						});
+					
+						$(this).after($suggestTitleDiv);
+						$('#attachment-details-title-suggest').fadeIn(120);
+						$suggestTitleDiv.addClass('wdescipt');
+						var detailsTitleSuggest = descriptions.title;
+						$suggestTitleDiv.html('<strong>Title</strong><em>X</em><br/><span>' + detailsTitleSuggest + '</span><br/><a href="#" id="title-replace" class="wdescript-replacet">Use</a> <a href="#" id="title-append" class="wdescript-appendt">Append</a> <a href="#" id="title-retry" class="wdescript-retry">Try Again</a> <a href="#" id="title-problem">+</a>');
+					});
+				} else {
+					console.log('No title field found.');
+				}
             }
 
             if (descriptions.caption.length > 1) {        
-                const $caption = jQuery('#attachment-details-caption');
-                if ($caption.length) {
-                    const captionoffset = $caption.offset();
-                    const captionleft   = captionoffset.left;
-                    const captiontop    = captionoffset.top;
+                const possibleCaption = [
+                    'attachment-details-caption',
+                    'attachment-details-two-column-caption',
+                    'attachment-details-one-column-caption'
+                    ];
+
+                    // Use a jQuery selector to find elements with any of the IDs
+                    const $caption = $(possibleCaption.map(id => `#${id}`).join(','));
+
+                    // Check if we found any matching elements
+                    if ($caption.length > 0) {
+                        // Perform your logic on the matched element(s)
+                        $caption.each(function() {
+							const captionoffset = $(this).offset();
+							const captionleft   = captionoffset.left;
+							const captiontop    = captionoffset.top;
+						
+							// console.log('Alt Text left:', captionleft, ' top:', captiontop);
+						
+							const $suggestCaptionDiv = jQuery('<div>', {
+								id: 'attachment-details-description-suggest',
+								css: {
+									/* left: descriptionLeft + 'px', 
+									top: (captiontop - 16) + 'px', */ 
+									width: ($(this).parent().width() - 10).toString() + 'px',
+									height: '160px'
+								}
+							});
                 
-                    // console.log('Alt Text left:', captionleft, ' top:', captiontop);
-                
-                    const $suggestCaptionDiv = jQuery('<div>', {
-                        id: 'attachment-details-description-suggest',
-                        css: {
-                            /* left: descriptionLeft + 'px', 
-                            top: (captiontop - 16) + 'px', */ 
-                            width: ($caption.parent().width() - 10).toString() + 'px',
-                            height: '160px'
-                        }
-                    });
-                
-                    $caption.after($suggestCaptionDiv);
-                    $('#attachment-details-caption-suggest').fadeIn(140);
-                    $suggestCaptionDiv.addClass('wdescipt');
-                    var detailsCaptionSuggest = descriptions.caption;
-                    $suggestCaptionDiv.html('<strong>Caption</strong><em>X</em><br/><span>' + detailsCaptionSuggest + '</span><br/><a href="#" id="caption-replace" class="wdescript-replace">Use</a> <a href="#" id="caption-append" class="wdescript-append">Append</a> <a href="#" id="caption-retry" class="wdescript-retry">Try Again</a> <a href="#" id="caption-problem">+</a>');
+							$(this).after($suggestCaptionDiv);
+							$('#attachment-details-caption-suggest').fadeIn(140);
+							$suggestCaptionDiv.addClass('wdescipt');
+							var detailsCaptionSuggest = descriptions.caption;
+							$suggestCaptionDiv.html('<strong>Caption</strong><em>X</em><br/><span>' + detailsCaptionSuggest + '</span><br/><a href="#" id="caption-replace" class="wdescript-replace">Use</a> <a href="#" id="caption-append" class="wdescript-append">Append</a> <a href="#" id="caption-retry" class="wdescript-retry">Try Again</a> <a href="#" id="caption-problem">+</a>');
+						});
                 }
             }
 
             if (descriptions.description.length > 1) {        
-                const $description = jQuery('#attachment-details-description');
-                if ($description.length) {
-                    const descriptionOffset = $description.offset();
-                    const descriptionLeft = descriptionOffset.left;
-                    const descriptionTop = descriptionOffset.top;
+                const possibleDescription = [
+                    'attachment-details-description',
+                    'attachment-details-two-column-description',
+                    'attachment-details-one-column-description'
+                    ];
+
+                    // Use a jQuery selector to find elements with any of the IDs
+                    const $description = $(possibleDescription.map(id => `#${id}`).join(','));
+
+                    if ($description.length > 0) {
+                        // Perform your logic on the matched element(s)
+                        $description.each(function() {
+                            console.log('Found description field:', $(this));
+
+							const descriptionOffset = $(this).offset();
+							const descriptionLeft = descriptionOffset.left;
+							const descriptionTop = descriptionOffset.top;
                 
-                    // console.log('Decription left:', descriptionLeft, ' top:', descriptionTop);
-                
-                    const $suggestDescriptDiv = jQuery('<div>', {
-                        id: 'attachment-details-description-suggest',
-                        css: {
-                            /* left: descriptionLeft + 'px', 
-                            top: (descriptionTop - 32) + 'px', */ 
-                            width: ($description.parent().width() - 10).toString() + 'px',
-                            height: '160px'
-                        }
-                    });
-                
-                    $description.after($suggestDescriptDiv);
-                    $('#attachment-details-description-suggest').fadeIn(160);
-                    $suggestDescriptDiv.addClass('wdescipt');
-                    var detailsDescriptSuggest = descriptions.description;
-                    $suggestDescriptDiv.html('<strong>Description</strong><em>X</em><br/><span>' + detailsDescriptSuggest + '</span><br/><a href="#" id="description-replace" class="wdescript-replace">Use</a> <a href="#" id="description-append" class="wdescript-append">Append</a> <a href="#" id="description-retry" class="wdescript-retry">Try Again</a> <a href="#" id="description-problem">+</a>');
+							// console.log('Decription left:', descriptionLeft, ' top:', descriptionTop);
+						
+							const $suggestDescriptDiv = jQuery('<div>', {
+								id: 'attachment-details-description-suggest',
+								css: {
+									/* left: descriptionLeft + 'px', 
+									top: (descriptionTop - 32) + 'px', */ 
+									width: ($(this).parent().width() - 10).toString() + 'px',
+									height: '160px'
+								}
+							});
+						
+							$(this).after($suggestDescriptDiv);
+							$('#attachment-details-description-suggest').fadeIn(160);
+							$suggestDescriptDiv.addClass('wdescipt');
+							var detailsDescriptSuggest = descriptions.description;
+							$suggestDescriptDiv.html('<strong>Description</strong><em>X</em><br/><span>' + detailsDescriptSuggest + '</span><br/><a href="#" id="description-replace" class="wdescript-replace">Use</a> <a href="#" id="description-append" class="wdescript-append">Append</a> <a href="#" id="description-retry" class="wdescript-retry">Try Again</a> <a href="#" id="description-problem">+</a>');
+						});
                 }
             }
 
           
         }).catch((error) => {
-          console.error('Error:', error);
+            console.error('Error:', error);
+            const errorMsg = error.error;
+        
+            // Remove the 'throbbing' class
+            $(this).removeClass('throbbing');
+        
+            // Add the error message to the DOM
+            const helpout = `<br/><span class="describe-help" target="_blank">${errorMsg}</span>`;
+            $(this).parent().append(helpout); 
+            $(this).css('margin-bottom', '16px');
+            $('.describe-help').fadeIn('fast');
         });
-
-
-
-/*
-#attachment-details-alt-text-suggest,
-#attachment-details-title-suggest,
-#attachment-details-caption-suggest,
-#attachment-details-description-suggest {
-    position: absolute;
-    z-index: 999999;
-}
-*/
 
         if (!attachmentId) {
             alert('No valid attachment ID found.');
@@ -288,44 +368,94 @@ jQuery(document).ready(function($) {
             }
           },
           error: function(xhr, status, error) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+            
+              // Safely access the nested error property
+              const errorMessage = response?.data?.error || 'Unknown error';
+              console.log('LINE 388 ' + errorMessage);
+              error = errorMessage;      
+            } catch (e) {
+              // console.error('Failed to parse JSON:', e);
+            }              
+             
             reject({ error: error });
           }
         });
       });
     }
 
-
-
     /**
-     * Set up the MutationObserver to watch for elements being added anywhere in <body>.
+     * Function to initialize the MutationObserver
      */
-    const observer = new MutationObserver(function(mutationsList) {
-        mutationsList.forEach(mutation => {
-            // We only care about added nodes
-            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                mutation.addedNodes.forEach(addedNode => {
-                    // If the node is an ELEMENT (not text)
-                    if (addedNode.nodeType === Node.ELEMENT_NODE) {
-                        const $added = $(addedNode);
+    function initializeObserver() {
+        const targetNode = document.body; // Observe changes on the entire body
 
-                        // Case 1: The node *itself* is .attachment-details
-                        if ($added.is('.attachment-details')) {
-                            addDescribeLinks($added);
-                        }
-                        // Case 2: The node *contains* .attachment-details somewhere inside
-                        else {
-                            const $descendants = $added.find('.attachment-details');
-                            if ($descendants.length > 0) {
-                                addDescribeLinks($descendants);
+        // Define the MutationObserver callback
+        const observerCallback = function(mutationsList) {
+            mutationsList.forEach(mutation => {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    mutation.addedNodes.forEach(addedNode => {
+                        // Check if the added node is an element
+                        if (addedNode.nodeType === Node.ELEMENT_NODE) {
+                            const $added = $(addedNode);
+
+                            // If the node or its descendants contain .attachment-info .details
+                            if ($added.is('.attachment-info .details')) {
+                                addDescribeLinks($added);
+                            } else {
+                                const $descendants = $added.find('.attachment-info .details');
+                                if ($descendants.length > 0) {
+                                    addDescribeLinks($descendants);
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                }
+            });
+        };
+
+        // Create a new MutationObserver instance
+        const observer = new MutationObserver(observerCallback);
+
+        // Start observing the target node with configuration
+        observer.observe(targetNode, {
+            childList: true,
+            subtree: true // Monitor all descendants of the target
+        });
+
+        console.log('MutationObserver initialized.');
+    }
+
+    /**
+     * Function to append "Describe" links to .attachment-info .details
+     */
+    function addDescribeLinks($elements) {
+        $elements.each(function() {
+            const $this = $(this);
+
+            // Ensure we don't append the link multiple times
+            if (!$this.find('.describe-link').length) {
+                const currentUrl = window.location.href;
+
+                // Build the "Describe" link with the current URL as a parameter
+                const describeLink = `<a href="${currentUrl}" class="describe-link" target="_blank">Describe</a>`;
+                $this.append(describeLink); // Append the link to the .details element
             }
         });
-    });
 
-    // Start observing <body> for added child elements (including all subtrees)
-    observer.observe(document.body, { childList: true, subtree: true });
+        console.log('"Describe" link added to .attachment-info .details.');
+    }
+
+    /**
+     * Check if we are on the appropriate page and initialize accordingly
+     */
+    const currentPage = window.location.pathname;
+
+    if (currentPage.includes('upload.php') || currentPage.includes('post.php')) {
+        console.log('Initializing MutationObserver for Media Library or Post Editor.');
+        initializeObserver();
+    }
+
 
 });

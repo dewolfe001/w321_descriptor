@@ -1,0 +1,8 @@
+2025-01-26 - version 1.0.1
+* Added - Error handling for unregistered account
+* Added - Error handling for no access key
+* Added - Error handling for no credits
+
+
+2025-01-21 - version 1.0.0
+* Initial release
