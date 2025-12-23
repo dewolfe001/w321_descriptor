@@ -15,7 +15,7 @@ defined('ABSPATH') || exit;
 // Define plugin constants.
 define( 'WD_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WD_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'WD_VERSION', '1.0.1' );
+define( 'WD_VERSION', '1.0.2' );
 define( 'WD_NONCE_ACTION', 'descriptor_action' );
 define( 'WD_API_ENDPOINT', 'https://descriptor.web321.co/wp-json/woo-descriptor/v1' );
 
@@ -59,7 +59,7 @@ class WooDescriptor {
             // Enqueue your custom script
             wp_enqueue_script(
                 'woo-descriptor-admin-js',
-                WD_PLUGIN_URL . 'assets/js/woo-descriptor-admin.js', // You’ll create this JS file
+                WD_PLUGIN_URL . 'assets/js/woo-descriptor-admin.js', // Youll create this JS file
                 [ 'jquery' ],
                 WD_VERSION,
                 true
@@ -124,7 +124,7 @@ class WooDescriptor {
             [ 'sanitize_callback' => 'sanitize_text_field' ]
         );
 
-        // Possibly register an option for storing the “account key” or account information
+        // Possibly register an option for storing the account key or account information
         register_setting(
             'woo_descriptor_settings_group',
             'wd_account_key',
@@ -295,20 +295,19 @@ class WooDescriptor {
 
         error_log("line 251 - ".print_r($api_result, TRUE));
 
-        $response_data = json_decode($api_result, true);
-        
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log('JSON decode error: ' . json_last_error_msg());
-            wp_send_json_error(['error' => 'Invalid JSON received'], 500);
-            return;
+        if ( is_wp_error( $api_result ) ) {
+            wp_send_json_error(
+                [ 'error' => $api_result->get_error_message() ],
+                500
+            );
         }
-        
-        if (!empty($api_result)) {
-                // Send response back to the client
-                wp_send_json_success($api_result);
-        } else {
+
+        if ( empty( $api_result ) || ! is_array( $api_result ) ) {
             wp_send_json_error(['error' => 'Missing description field'], 500);
         }
+
+        // Send response back to the client
+        wp_send_json_success($api_result);
     }
     
 
@@ -361,7 +360,7 @@ class TimeBasedKeyGenerator {
         
         return [
             'key' => $key,
-            'expires_at' => $curent_time + (($this->validity_hours / 2) * 3600)
+            'expires_at' => $current_time + (($this->validity_hours / 2) * 3600)
         ];
     }
     
