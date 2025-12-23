@@ -318,17 +318,14 @@ jQuery(document).ready(function($) {
 
 
     /**
-     * Function to append "Describe Image" links in any newly added .attachment-details
+     * Function to append "Describe Image" links near edit attachment links.
      */
-    function addDescribeLinks($container) {
-        // Within the given container (which might be .attachment-details or a parent),
-        // find all a.edit-attachment.
+    function addDescribeLinksToEditAttachments($container) {
         $container.find('.attachment-info a.edit-attachment').each(function() {
             // Skip if we’ve already processed this link
             if (!$(this).hasClass('wd-processed')) {
                 $(this).addClass('wd-processed');
 
-     
                 // 1) Parse the attachment ID from the "Edit Image" link's href
                 const href  = $(this).attr('href') || '';
                 const match = href.match(/post=(\d+)/);
@@ -402,12 +399,14 @@ jQuery(document).ready(function($) {
 
                             // If the node or its descendants contain .attachment-info .details
                             if ($added.is('.attachment-info .details')) {
-                                addDescribeLinks($added);
+                                addDescribeLinksToDetails($added);
+                                addDescribeLinksToEditAttachments($added);
                             } else {
                                 const $descendants = $added.find('.attachment-info .details');
                                 if ($descendants.length > 0) {
-                                    addDescribeLinks($descendants);
+                                    addDescribeLinksToDetails($descendants);
                                 }
+                                addDescribeLinksToEditAttachments($added);
                             }
                         }
                     });
@@ -430,7 +429,7 @@ jQuery(document).ready(function($) {
     /**
      * Function to append "Describe" links to .attachment-info .details
      */
-    function addDescribeLinks($elements) {
+    function addDescribeLinksToDetails($elements) {
         $elements.each(function() {
             const $this = $(this);
 
@@ -455,6 +454,8 @@ jQuery(document).ready(function($) {
     if (currentPage.includes('upload.php') || currentPage.includes('post.php')) {
         console.log('Initializing MutationObserver for Media Library or Post Editor.');
         initializeObserver();
+        addDescribeLinksToEditAttachments($(document));
+        addDescribeLinksToDetails($('.attachment-info .details'));
     }
 
 
