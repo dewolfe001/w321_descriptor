@@ -39,6 +39,7 @@ class WooDescriptor {
 
         // AJAX handlers
         add_action( 'wp_ajax_w321get_descriptions', [ $this, 'ajax_generate_image_descriptions' ] );
+        add_action( 'wp_ajax_w321_bulk_descriptions', [ $this, 'ajax_generate_bulk_image_descriptions' ] );
     }
 
     /**
@@ -246,54 +247,9 @@ class WooDescriptor {
         if ( ! $attachment ) {
             wp_send_json_error( [ 'message' => __( 'Invalid attachment.', 'woo-descriptor' ) ] );
         }
-        else {
-            $image_url = wp_get_attachment_url($attachment);
-        }
+        $fields = isset( $_POST['fields'] ) ? (array) $_POST['fields'] : [ 'alt', 'title', 'caption', 'description' ];
 
-        error_log("telemetry ".print_r($_POST, TRUE));
-        error_log("stated with $attachment finished with $image_url");
-
-        $fields = $_POST['fields'];
-
-        // Gather needed info
-        $supplemental_info = get_option( 'wd_supplemental_information', '' );
-        $private_key = get_option( 'wd_account_key', '' );
-
-        $generator = new TimeBasedKeyGenerator($private_key);
-        $key =  $generator->generateKey($fields);   
-
-        $response = wp_remote_post(
-            WD_API_ENDPOINT . '/describe',
-            [
-                'body' => [
-                    'image_url' => $image_url,
-                    'key' => $key['key'],
-                    'fields' => $fields,                
-                    'supplemental_info' => $supplemental_info,
-                ],
-                'timeout' => 60
-            ]
-        );
-        
-        // Check for errors
-        if (is_wp_error($response)) {
-            error_log('Request failed: ' . $response->get_error_message());
-            wp_send_json_error(['error' => $response->get_error_message()], 500);
-            return;
-        }
-        
-        // Decode the response
-        $response_body = wp_remote_retrieve_body($response);
-        if ($response_body == '{"error":"Invalid or expired key."}') {
-            wp_send_json_error(['error' => 'Invalid access key.'], 500);
-            return;            
-        }
-        
-        error_log("line 287 - ".print_r($response_body, TRUE));
-
-        $api_result = descriptor_process_api_response($response_body);
-
-        error_log("line 251 - ".print_r($api_result, TRUE));
+        $api_result = $this->fetch_descriptions_for_attachment( (int) $attachment, $fields );
 
         if ( is_wp_error( $api_result ) ) {
             wp_send_json_error(
@@ -303,11 +259,130 @@ class WooDescriptor {
         }
 
         if ( empty( $api_result ) || ! is_array( $api_result ) ) {
-            wp_send_json_error(['error' => 'Missing description field'], 500);
+            wp_send_json_error( [ 'error' => 'Missing description field' ], 500 );
         }
 
         // Send response back to the client
-        wp_send_json_success($api_result);
+        wp_send_json_success( $api_result );
+    }
+
+    /**
+     * AJAX handler: Generate descriptions in bulk and persist them to attachments.
+     */
+    public function ajax_generate_bulk_image_descriptions() {
+        check_ajax_referer( WD_NONCE_ACTION, 'nonce' );
+
+        if ( ! current_user_can( 'upload_files' ) ) {
+            wp_send_json_error( [ 'message' => __( 'You do not have permission to upload files.', 'woo-descriptor' ) ] );
+        }
+
+        $attachments = isset( $_POST['attachments'] ) ? (array) $_POST['attachments'] : [];
+        $attachments = array_values( array_filter( array_map( 'intval', $attachments ) ) );
+
+        if ( empty( $attachments ) ) {
+            wp_send_json_error( [ 'message' => __( 'No attachments selected.', 'woo-descriptor' ) ] );
+        }
+
+        $fields = isset( $_POST['fields'] ) ? (array) $_POST['fields'] : [ 'alt', 'title', 'caption', 'description' ];
+
+        $results = [
+            'updated' => [],
+            'errors' => [],
+        ];
+
+        foreach ( $attachments as $attachment_id ) {
+            $api_result = $this->fetch_descriptions_for_attachment( $attachment_id, $fields );
+
+            if ( is_wp_error( $api_result ) ) {
+                $results['errors'][ $attachment_id ] = $api_result->get_error_message();
+                continue;
+            }
+
+            $this->update_attachment_from_descriptions( $attachment_id, $api_result, $fields );
+            $results['updated'][] = $attachment_id;
+        }
+
+        wp_send_json_success( $results );
+    }
+
+    /**
+     * Fetch descriptions for a given attachment ID.
+     */
+    private function fetch_descriptions_for_attachment( int $attachment_id, array $fields ) {
+        $image_url = wp_get_attachment_url( $attachment_id );
+        if ( ! $image_url ) {
+            return new WP_Error( 'invalid_attachment', __( 'Invalid attachment.', 'woo-descriptor' ) );
+        }
+
+        // Gather needed info
+        $supplemental_info = get_option( 'wd_supplemental_information', '' );
+        $private_key = get_option( 'wd_account_key', '' );
+
+        $generator = new TimeBasedKeyGenerator( $private_key );
+        $key = $generator->generateKey( $fields );
+
+        $response = wp_remote_post(
+            WD_API_ENDPOINT . '/describe',
+            [
+                'body' => [
+                    'image_url' => $image_url,
+                    'key' => $key['key'],
+                    'fields' => $fields,
+                    'supplemental_info' => $supplemental_info,
+                ],
+                'timeout' => 60,
+            ]
+        );
+
+        if ( is_wp_error( $response ) ) {
+            return new WP_Error( 'descriptor_api_error', $response->get_error_message() );
+        }
+
+        $response_body = wp_remote_retrieve_body( $response );
+        if ( '{"error":"Invalid or expired key."}' === $response_body ) {
+            return new WP_Error( 'descriptor_invalid_key', __( 'Invalid access key.', 'woo-descriptor' ) );
+        }
+
+        $api_result = descriptor_process_api_response( $response_body );
+
+        if ( is_wp_error( $api_result ) ) {
+            return $api_result;
+        }
+
+        if ( empty( $api_result ) || ! is_array( $api_result ) ) {
+            return new WP_Error( 'descriptor_missing_description', __( 'Missing description field', 'woo-descriptor' ) );
+        }
+
+        return $api_result;
+    }
+
+    /**
+     * Update attachment fields from description data.
+     */
+    private function update_attachment_from_descriptions( int $attachment_id, array $descriptions, array $fields ) {
+        if ( in_array( 'alt', $fields, true ) && isset( $descriptions['alt'] ) ) {
+            update_post_meta( $attachment_id, '_wp_attachment_image_alt', $descriptions['alt'] );
+        }
+
+        $post_updates = [
+            'ID' => $attachment_id,
+        ];
+
+        if ( in_array( 'title', $fields, true ) && isset( $descriptions['title'] ) ) {
+            $post_updates['post_title'] = $descriptions['title'];
+        }
+
+        if ( in_array( 'caption', $fields, true ) && isset( $descriptions['caption'] ) ) {
+            $post_updates['post_excerpt'] = $descriptions['caption'];
+        }
+
+        if ( in_array( 'description', $fields, true ) && isset( $descriptions['description'] ) ) {
+            $post_updates['post_content'] = $descriptions['description'];
+        }
+
+        if ( count( $post_updates ) > 1 ) {
+            wp_update_post( $post_updates );
+        }
     }
     
 

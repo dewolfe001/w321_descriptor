@@ -382,6 +382,103 @@ jQuery(document).ready(function($) {
       });
     }
 
+    function get_selected_attachments() {
+        const ids = new Set();
+
+        $('tbody th.check-column input[type="checkbox"]:checked').each(function() {
+            const val = parseInt($(this).val(), 10);
+            if (val) {
+                ids.add(val);
+            }
+        });
+
+        $('.attachments .attachment[aria-checked="true"]').each(function() {
+            const val = parseInt($(this).data('id'), 10);
+            if (val) {
+                ids.add(val);
+            }
+        });
+
+        return Array.from(ids);
+    }
+
+    function bulk_descriptions(attachments, fields = ['alt', 'title', 'caption', 'description']) {
+        return new Promise((resolve, reject) => {
+            jQuery.ajax({
+                url: w321descritptor.ajax_url,
+                method: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'w321_bulk_descriptions',
+                    nonce: w321descritptor.descriptor_nonce,
+                    attachments: attachments,
+                    fields: fields
+                },
+                success: function(response) {
+                    if (response.success) {
+                        resolve(response.data);
+                    } else {
+                        reject({ error: response.data.error || 'Unknown error from server.' });
+                    }
+                },
+                error: function(xhr, status, error) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        const errorMessage = response?.data?.error || 'Unknown error';
+                        error = errorMessage;
+                    } catch (e) {
+                        // ignore
+                    }
+
+                    reject({ error: error });
+                }
+            });
+        });
+    }
+
+    function handle_bulk_describe(e) {
+        e.preventDefault();
+        $('.describe-help').hide();
+
+        if (w321descritptor.account_status != 1) {
+            const helpout = '<br/><a href="https://descriptor.web321.co/dashboard/" class="describe-help" target="_blank">You need to finish your Descriptor setup. - Click Here</a>';
+            $(this).parent().append(helpout);
+            $(this).css('margin-bottom', '16px');
+            $('.describe-help').fadeIn('fast');
+            return;
+        }
+
+        const attachmentIds = get_selected_attachments();
+        const $button = $(this);
+        const $status = $button.siblings('.describe-bulk-status');
+
+        if (!attachmentIds.length) {
+            alert('Select at least one image to describe.');
+            return;
+        }
+
+        $button.prop('disabled', true).addClass('throbbing');
+        $status.text('Working...').addClass('describe-bulk-status--active');
+
+        bulk_descriptions(attachmentIds).then((result) => {
+            const updatedCount = result.updated ? result.updated.length : 0;
+            const errorCount = result.errors ? Object.keys(result.errors).length : 0;
+            let message = `Updated ${updatedCount} image${updatedCount === 1 ? '' : 's'}.`;
+
+            if (errorCount > 0) {
+                message += ` ${errorCount} failed.`;
+            }
+
+            $status.text(message);
+        }).catch((error) => {
+            const errorMsg = error.error || 'Unknown error';
+            $status.text(errorMsg);
+        }).finally(() => {
+            $button.prop('disabled', false).removeClass('throbbing');
+            $status.addClass('describe-bulk-status--active');
+        });
+    }
+
     /**
      * Function to initialize the MutationObserver
      */
@@ -446,6 +543,18 @@ jQuery(document).ready(function($) {
         console.log('"Describe" link added to .attachment-info .details.');
     }
 
+    function add_bulk_describe_button() {
+        const $listContainer = $('.tablenav.top .actions');
+        if ($listContainer.length && !$listContainer.find('.describe-bulk-button').length) {
+            $listContainer.append('<button type="button" class="button describe-bulk-button">Describe Selected</button><span class="describe-bulk-status"></span>');
+        }
+
+        const $gridContainer = $('.media-toolbar-secondary');
+        if ($gridContainer.length && !$gridContainer.find('.describe-bulk-button').length) {
+            $gridContainer.append('<button type="button" class="button describe-bulk-button">Describe Selected</button><span class="describe-bulk-status"></span>');
+        }
+    }
+
     /**
      * Check if we are on the appropriate page and initialize accordingly
      */
@@ -456,7 +565,9 @@ jQuery(document).ready(function($) {
         initializeObserver();
         addDescribeLinksToEditAttachments($(document));
         addDescribeLinksToDetails($('.attachment-info .details'));
+        add_bulk_describe_button();
     }
 
+    $(document).on('click', '.describe-bulk-button', handle_bulk_describe);
 
 });
