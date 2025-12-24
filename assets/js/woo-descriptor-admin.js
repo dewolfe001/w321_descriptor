@@ -78,7 +78,7 @@ jQuery(document).ready(function($) {
     });
     
     // Whenever someone clicks "Describe Image"...
-    $(document).on('click', '.describe-attachment, .describe-link', function(e){
+    $(document).on('click', '.describe-attachment', function(e){
         e.preventDefault();
         $('.describe-help').hide();
 
@@ -499,10 +499,6 @@ jQuery(document).ready(function($) {
                                 addDescribeLinksToDetails($added);
                                 addDescribeLinksToEditAttachments($added);
                             } else {
-                                const $descendants = $added.find('.attachment-info .details');
-                                if ($descendants.length > 0) {
-                                    addDescribeLinksToDetails($descendants);
-                                }
                                 addDescribeLinksToEditAttachments($added);
                             }
                         }
@@ -521,26 +517,6 @@ jQuery(document).ready(function($) {
         });
 
         console.log('MutationObserver initialized.');
-    }
-
-    /**
-     * Function to append "Describe" links to .attachment-info .details
-     */
-    function addDescribeLinksToDetails($elements) {
-        $elements.each(function() {
-            const $this = $(this);
-
-            // Ensure we don't append the link multiple times
-            if (!$this.find('.describe-link').length) {
-                const currentUrl = window.location.href;
-
-                // Build the "Describe" link with the current URL as a parameter
-                const describeLink = `<a href="${currentUrl}" class="describe-link" target="_blank">Describe</a>`;
-                $this.append(describeLink); // Append the link to the .details element
-            }
-        });
-
-        console.log('"Describe" link added to .attachment-info .details.');
     }
 
     function add_bulk_describe_button() {
@@ -564,7 +540,6 @@ jQuery(document).ready(function($) {
         console.log('Initializing MutationObserver for Media Library or Post Editor.');
         initializeObserver();
         addDescribeLinksToEditAttachments($(document));
-        addDescribeLinksToDetails($('.attachment-info .details'));
         add_bulk_describe_button();
     }
 
