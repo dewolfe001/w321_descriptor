@@ -25,6 +25,24 @@
   text-decoration: none;
 }
 
+.wd-describe-wrapper {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+}
+
+.wd-context-row {
+  display: none;
+  flex-basis: 100%;
+}
+
+.wd-context-input {
+  width: 100%;
+  max-width: 420px;
+}
+
 .delete-attachment {
     clear: both;
     display: block !important;

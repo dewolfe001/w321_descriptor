@@ -248,8 +248,9 @@ class WooDescriptor {
             wp_send_json_error( [ 'message' => __( 'Invalid attachment.', 'woo-descriptor' ) ] );
         }
         $fields = isset( $_POST['fields'] ) ? (array) $_POST['fields'] : [ 'alt', 'title', 'caption', 'description' ];
+        $context = isset( $_POST['context'] ) ? sanitize_textarea_field( wp_unslash( $_POST['context'] ) ) : '';
 
-        $api_result = $this->fetch_descriptions_for_attachment( (int) $attachment, $fields );
+        $api_result = $this->fetch_descriptions_for_attachment( (int) $attachment, $fields, $context );
 
         if ( is_wp_error( $api_result ) ) {
             wp_send_json_error(
@@ -308,7 +309,7 @@ class WooDescriptor {
     /**
      * Fetch descriptions for a given attachment ID.
      */
-    private function fetch_descriptions_for_attachment( int $attachment_id, array $fields ) {
+    private function fetch_descriptions_for_attachment( int $attachment_id, array $fields, string $context = '' ) {
         $image_url = wp_get_attachment_url( $attachment_id );
         if ( ! $image_url ) {
             return new WP_Error( 'invalid_attachment', __( 'Invalid attachment.', 'woo-descriptor' ) );
@@ -316,6 +317,9 @@ class WooDescriptor {
 
         // Gather needed info
         $supplemental_info = get_option( 'wd_supplemental_information', '' );
+        if ( ! empty( $context ) ) {
+            $supplemental_info = trim( $supplemental_info . "\n\n" . $context );
+        }
         $private_key = get_option( 'wd_account_key', '' );
 
         $generator = new TimeBasedKeyGenerator( $private_key );
