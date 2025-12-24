@@ -56,13 +56,14 @@ jQuery(document).ready(function($) {
 
         var setting = $(this).closest('span.setting').data('setting');
 
-        const $link         = $(document).find('.describe-attachment');
-        const attachmentId  = parseInt($link.data('attachment-id'), 10);
+        const $link = $(document).find('.describe-attachment');
+        const attachmentId = parseInt($link.data('attachment-id'), 10);
+        const contextText = $link.closest('.wd-describe-wrapper').find('.wd-context-input').val() || '';
 
         $(this).parent().addClass('pulsing');
         
         // var descriptions = get_descriptions(attachmentId, [setting]);        
-        get_descriptions(attachmentId, [setting]).then((descriptions) => {
+        get_descriptions(attachmentId, [setting], contextText).then((descriptions) => {
 
             var descriptionValue = descriptions[setting];
             $(this).closest('.pulsing').find('span').text(descriptionValue);
@@ -75,6 +76,12 @@ jQuery(document).ready(function($) {
     $(document).on('click', '.describe-help', function(e) {
         $('.describe-help').fadeOut('slow');
         return;
+    });
+
+    $(document).on('click', '.describe-context-toggle', function(e) {
+        e.preventDefault();
+        const $contextRow = $(this).closest('.wd-describe-wrapper').find('.wd-context-row');
+        $contextRow.slideToggle('fast');
     });
     
     // Whenever someone clicks "Describe Image"...
@@ -92,7 +99,7 @@ jQuery(document).ready(function($) {
      
         $(this).addClass('throbbing');
 
-        const $link         = $(this);
+        const $link = $(this);
         
         var editAttachmentUrl = $(this).closest('.details').find('.edit-attachment').attr('href');
         var attachmentId  = parseInt($link.data('attachment-id'), 10);
@@ -112,7 +119,9 @@ jQuery(document).ready(function($) {
         // go to the server locally with admin-ajax.php 
 		// const descriptions = get_descriptions(attachmentId);
 
-        get_descriptions(attachmentId).then((descriptions) => {
+        const contextText = $link.closest('.wd-describe-wrapper').find('.wd-context-input').val() || '';
+
+        get_descriptions(attachmentId, ['alt', 'title', 'caption', 'description'], contextText).then((descriptions) => {
             // console.log('line 79', descriptions);
 
             $(this).removeClass('throbbing');
@@ -333,19 +342,24 @@ jQuery(document).ready(function($) {
         
                 // 2) Insert "Describe Image" link with data-attachment-id
                 $(this).after(`
-                    <a href="#" 
-                       class="describe-attachment" 
-                       data-attachment-id="${attachmentId}" 
-                       style="margin-left: 8px;"
-                    >
-                       Describe Image
-                    </a>
+                    <span class="wd-describe-wrapper">
+                        <a href="#"
+                           class="describe-attachment"
+                           data-attachment-id="${attachmentId}"
+                        >
+                           Describe Image
+                        </a>
+                        <button type="button" class="button describe-context-toggle">Context</button>
+                        <span class="wd-context-row">
+                            <textarea class="wd-context-input" rows="3" placeholder="Add context for this image"></textarea>
+                        </span>
+                    </span>
                 `);
             }
         });
     }
 
-    function get_descriptions(attachment, fields = ['alt', 'title', 'caption', 'description']) {
+    function get_descriptions(attachment, fields = ['alt', 'title', 'caption', 'description'], context = '') {
       return new Promise((resolve, reject) => {
         jQuery.ajax({
           url: w321descritptor.ajax_url,
@@ -355,7 +369,8 @@ jQuery(document).ready(function($) {
             action: 'w321get_descriptions',
             nonce: w321descritptor.descriptor_nonce,
             attachment: attachment,
-            fields: fields
+            fields: fields,
+            context: context
           },
           success: function(response) {
             if (response.success) {
