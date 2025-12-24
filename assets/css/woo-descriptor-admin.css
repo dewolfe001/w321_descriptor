@@ -6,6 +6,23 @@
 .describe-attachment {
   width: fit-content;
   float: left;
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid #ccd0d4;
+  border-radius: 4px;
+  background-color: #f6f7f7;
+  color: #2c3338;
+  font-size: 12px;
+  line-height: 1.5;
+  text-decoration: none;
+}
+
+.describe-attachment:hover,
+.describe-attachment:focus {
+  border-color: #8c8f94;
+  background-color: #f0f0f1;
+  color: #1d2327;
+  text-decoration: none;
 }
 
 .delete-attachment {
