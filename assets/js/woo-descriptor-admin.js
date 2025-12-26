@@ -326,6 +326,26 @@ jQuery(document).ready(function($) {
     });
 
 
+    function buildDescribeWrapper(attachmentId, options = {}) {
+        const wrapperClass = ['wd-describe-wrapper', options.wrapperClass || ''].filter(Boolean).join(' ');
+        const placeholder = options.contextPlaceholder || 'Add context for this image';
+
+        return `
+            <span class="${wrapperClass}">
+                <a href="#"
+                   class="describe-attachment"
+                   data-attachment-id="${attachmentId}"
+                >
+                   Describe Image
+                </a>
+                <button type="button" class="button describe-context-toggle">Context</button>
+                <span class="wd-context-row">
+                    <textarea class="wd-context-input" rows="3" placeholder="${placeholder}"></textarea>
+                </span>
+            </span>
+        `;
+    }
+
     /**
      * Function to append "Describe Image" links near edit attachment links.
      */
@@ -339,24 +359,51 @@ jQuery(document).ready(function($) {
                 const href  = $(this).attr('href') || '';
                 const match = href.match(/post=(\d+)/);
                 const attachmentId = match ? parseInt(match[1], 10) : 0;
-        
+
                 // 2) Insert "Describe Image" link with data-attachment-id
-                $(this).after(`
-                    <span class="wd-describe-wrapper">
-                        <a href="#"
-                           class="describe-attachment"
-                           data-attachment-id="${attachmentId}"
-                        >
-                           Describe Image
-                        </a>
-                        <button type="button" class="button describe-context-toggle">Context</button>
-                        <span class="wd-context-row">
-                            <textarea class="wd-context-input" rows="3" placeholder="Add context for this image"></textarea>
-                        </span>
-                    </span>
-                `);
+                $(this).after(buildDescribeWrapper(attachmentId));
             }
         });
+    }
+
+    /**
+     * Append "Describe Image" buttons on the attachment edit page.
+     */
+    function addDescribeLinksToAttachmentEditPage($container) {
+        if (!$('body').hasClass('post-type-attachment')) {
+            return;
+        }
+
+        const attachmentId = getAttachmentIdFromPage();
+        if (!attachmentId) {
+            return;
+        }
+
+        const selectors = [
+            '#imgedit-open-btn',
+            '.attachment-actions .edit-attachment',
+            '.edit-attachment.button',
+            'a.edit-attachment'
+        ];
+
+        $container.find(selectors.join(',')).each(function() {
+            if ($(this).hasClass('wd-processed')) {
+                return;
+            }
+
+            $(this).addClass('wd-processed');
+            $(this).after(buildDescribeWrapper(attachmentId, { wrapperClass: 'wd-describe-wrapper--stacked' }));
+        });
+    }
+
+    function getAttachmentIdFromPage() {
+        const postId = parseInt($('#post_ID').val(), 10);
+        if (postId) {
+            return postId;
+        }
+
+        const match = window.location.search.match(/post=(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
     }
 
     function get_descriptions(attachment, fields = ['alt', 'title', 'caption', 'description'], context = '') {
@@ -516,6 +563,8 @@ jQuery(document).ready(function($) {
                             } else {
                                 addDescribeLinksToEditAttachments($added);
                             }
+
+                            addDescribeLinksToAttachmentEditPage($added);
                         }
                     });
                 }
@@ -555,6 +604,7 @@ jQuery(document).ready(function($) {
         console.log('Initializing MutationObserver for Media Library or Post Editor.');
         initializeObserver();
         addDescribeLinksToEditAttachments($(document));
+        addDescribeLinksToAttachmentEditPage($(document));
         add_bulk_describe_button();
     }
 
