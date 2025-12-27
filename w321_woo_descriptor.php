@@ -3,7 +3,7 @@
  * Plugin Name: WP Image Descriptor
  * Plugin URI:  https://descriptor.web321.co/
  * Description: Describes product images for WooCommerce products, populates media meta, and provides a "Try again" feature for generating new descriptions.
- * Version:     1.5.3
+ * Version:     1.5.4
  * Author: dewolfe001
  * Author URI: https://web321.co/
  * Text Domain: woo-descriptor
@@ -15,9 +15,10 @@ defined('ABSPATH') || exit;
 // Define plugin constants.
 define( 'WD_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WD_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'WD_VERSION', '1.0.2' );
+define( 'WD_VERSION', '1.5.4' );
 define( 'WD_NONCE_ACTION', 'descriptor_action' );
 define( 'WD_API_ENDPOINT', 'https://descriptor.web321.co/wp-json/woo-descriptor/v1' );
+define( 'WD_RELEASE_API_ENDPOINT', 'https://web321.co/wp-json/release-api/v1/plugins/slug/wp-descriptor' );
 
 /**
  * Class WooDescriptor
@@ -394,6 +395,118 @@ class WooDescriptor {
 
 // Instantiate the plugin.
 new WooDescriptor();
+
+add_filter( 'pre_set_site_transient_update_plugins', 'wd_check_for_updates' );
+add_filter( 'plugins_api', 'wd_plugins_api', 10, 3 );
+
+/**
+ * Fetch release info for the plugin from the release API.
+ */
+function wd_fetch_release_info() {
+    $cached = get_transient( 'wd_release_info' );
+    if ( $cached ) {
+        return $cached;
+    }
+
+    $response = wp_remote_get(
+        WD_RELEASE_API_ENDPOINT,
+        [
+            'timeout' => 15,
+        ]
+    );
+
+    if ( is_wp_error( $response ) ) {
+        return null;
+    }
+
+    $response_code = wp_remote_retrieve_response_code( $response );
+    if ( 200 !== $response_code ) {
+        return null;
+    }
+
+    $body = wp_remote_retrieve_body( $response );
+    if ( empty( $body ) ) {
+        return null;
+    }
+
+    $release = json_decode( $body, true );
+    if ( empty( $release['version'] ) ) {
+        return null;
+    }
+
+    set_transient( 'wd_release_info', $release, 12 * HOUR_IN_SECONDS );
+
+    return $release;
+}
+
+/**
+ * Inject update data into WordPress update checks.
+ */
+function wd_check_for_updates( $transient ) {
+    if ( empty( $transient->checked ) ) {
+        return $transient;
+    }
+
+    $release = wd_fetch_release_info();
+    if ( empty( $release ) ) {
+        return $transient;
+    }
+
+    $plugin_basename = plugin_basename( __FILE__ );
+    $current_version = WD_VERSION;
+    $remote_version = $release['version'];
+    $slug = isset( $release['slug'] ) ? $release['slug'] : 'wp-descriptor';
+
+    $update_data = (object) [
+        'slug'        => $slug,
+        'plugin'      => $plugin_basename,
+        'new_version' => $remote_version,
+        'url'         => isset( $release['homepage'] ) ? $release['homepage'] : '',
+        'package'     => isset( $release['download_url'] ) ? $release['download_url'] : '',
+    ];
+
+    if ( version_compare( $current_version, $remote_version, '<' ) ) {
+        $transient->response[ $plugin_basename ] = $update_data;
+    } else {
+        $transient->no_update[ $plugin_basename ] = $update_data;
+    }
+
+    return $transient;
+}
+
+/**
+ * Provide plugin information for the update details modal.
+ */
+function wd_plugins_api( $result, $action, $args ) {
+    if ( 'plugin_information' !== $action ) {
+        return $result;
+    }
+
+    if ( empty( $args->slug ) || 'wp-descriptor' !== $args->slug ) {
+        return $result;
+    }
+
+    $release = wd_fetch_release_info();
+    if ( empty( $release ) ) {
+        return $result;
+    }
+
+    return (object) [
+        'name'          => isset( $release['name'] ) ? $release['name'] : 'WP Image Descriptor',
+        'slug'          => isset( $release['slug'] ) ? $release['slug'] : 'wp-descriptor',
+        'version'       => isset( $release['version'] ) ? $release['version'] : WD_VERSION,
+        'author'        => isset( $release['author'] ) ? $release['author'] : '',
+        'homepage'      => isset( $release['homepage'] ) ? $release['homepage'] : '',
+        'requires'      => isset( $release['requires'] ) ? $release['requires'] : '',
+        'tested'        => isset( $release['tested'] ) ? $release['tested'] : '',
+        'requires_php'  => isset( $release['requires_php'] ) ? $release['requires_php'] : '',
+        'last_updated'  => isset( $release['last_updated'] ) ? $release['last_updated'] : '',
+        'download_link' => isset( $release['download_url'] ) ? $release['download_url'] : '',
+        'sections'      => isset( $release['sections'] ) ? $release['sections'] : [],
+        'banners'       => isset( $release['banners'] ) ? $release['banners'] : [],
+        'icons'         => isset( $release['icons'] ) ? $release['icons'] : [],
+    ];
+}
 
 class TimeBasedKeyGenerator {
     private $secret_key;
