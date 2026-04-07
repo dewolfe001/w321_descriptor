@@ -59,11 +59,12 @@ jQuery(document).ready(function($) {
         const $link = $(document).find('.describe-attachment');
         const attachmentId = parseInt($link.data('attachment-id'), 10);
         const contextText = $link.closest('.wd-describe-wrapper').find('.wd-context-input').val() || '';
+        const disableRankMath = shouldDisableRankMathFilters($link.closest('.wd-describe-wrapper'));
 
         $(this).parent().addClass('pulsing');
         
         // var descriptions = get_descriptions(attachmentId, [setting]);        
-        get_descriptions(attachmentId, [setting], contextText).then((descriptions) => {
+        get_descriptions(attachmentId, [setting], contextText, disableRankMath).then((descriptions) => {
 
             var descriptionValue = descriptions[setting];
             $(this).closest('.pulsing').find('span').text(descriptionValue);
@@ -120,8 +121,9 @@ jQuery(document).ready(function($) {
 		// const descriptions = get_descriptions(attachmentId);
 
         const contextText = $link.closest('.wd-describe-wrapper').find('.wd-context-input').val() || '';
+        const disableRankMath = shouldDisableRankMathFilters($link.closest('.wd-describe-wrapper'));
 
-        get_descriptions(attachmentId, ['alt', 'title', 'caption', 'description'], contextText).then((descriptions) => {
+        get_descriptions(attachmentId, ['alt', 'title', 'caption', 'description'], contextText, disableRankMath).then((descriptions) => {
             // console.log('line 79', descriptions);
 
             $(this).removeClass('throbbing');
@@ -329,6 +331,7 @@ jQuery(document).ready(function($) {
     function buildDescribeWrapper(attachmentId, options = {}) {
         const wrapperClass = ['wd-describe-wrapper', options.wrapperClass || ''].filter(Boolean).join(' ');
         const placeholder = options.contextPlaceholder || 'Add context for this image';
+        const rankMathChecked = Number(w321descritptor.disable_rankmath_filters || 0) === 1 ? 'checked' : '';
 
         return `
             <span class="${wrapperClass}">
@@ -342,8 +345,25 @@ jQuery(document).ready(function($) {
                 <span class="wd-context-row">
                     <textarea class="wd-context-input" rows="3" placeholder="${placeholder}"></textarea>
                 </span>
+                <span class="wd-rankmath-toggle-row">
+                    <label><input type="checkbox" class="wd-disable-rankmath-filters" ${rankMathChecked} /> Disable Rank Math filters for this run</label>
+                </span>
             </span>
         `;
+    }
+
+    function shouldDisableRankMathFilters($scope) {
+        const $localToggle = $scope.find('.wd-disable-rankmath-filters').first();
+        if ($localToggle.length) {
+            return $localToggle.is(':checked') ? 1 : 0;
+        }
+
+        const $bulkToggle = $('.wd-disable-rankmath-filters-bulk').first();
+        if ($bulkToggle.length) {
+            return $bulkToggle.is(':checked') ? 1 : 0;
+        }
+
+        return Number(w321descritptor.disable_rankmath_filters || 0) === 1 ? 1 : 0;
     }
 
     /**
@@ -406,7 +426,7 @@ jQuery(document).ready(function($) {
         return match ? parseInt(match[1], 10) : 0;
     }
 
-    function get_descriptions(attachment, fields = ['alt', 'title', 'caption', 'description'], context = '') {
+    function get_descriptions(attachment, fields = ['alt', 'title', 'caption', 'description'], context = '', disableRankMath = 0) {
       return new Promise((resolve, reject) => {
         jQuery.ajax({
           url: w321descritptor.ajax_url,
@@ -417,7 +437,8 @@ jQuery(document).ready(function($) {
             nonce: w321descritptor.descriptor_nonce,
             attachment: attachment,
             fields: fields,
-            context: context
+            context: context,
+            disable_rankmath: disableRankMath
           },
           success: function(response) {
             if (response.success) {
@@ -464,7 +485,7 @@ jQuery(document).ready(function($) {
         return Array.from(ids);
     }
 
-    function bulk_descriptions(attachments, fields = ['alt', 'title', 'caption', 'description']) {
+    function bulk_descriptions(attachments, fields = ['alt', 'title', 'caption', 'description'], disableRankMath = 0) {
         return new Promise((resolve, reject) => {
             jQuery.ajax({
                 url: w321descritptor.ajax_url,
@@ -474,7 +495,8 @@ jQuery(document).ready(function($) {
                     action: 'w321_bulk_descriptions',
                     nonce: w321descritptor.descriptor_nonce,
                     attachments: attachments,
-                    fields: fields
+                    fields: fields,
+                    disable_rankmath: disableRankMath
                 },
                 success: function(response) {
                     if (response.success) {
@@ -513,6 +535,7 @@ jQuery(document).ready(function($) {
         const attachmentIds = get_selected_attachments();
         const $button = $(this);
         const $status = $button.siblings('.describe-bulk-status');
+        const disableRankMath = shouldDisableRankMathFilters($button.closest('.describe-bulk-controls'));
 
         if (!attachmentIds.length) {
             alert('Select at least one image to describe.');
@@ -522,7 +545,7 @@ jQuery(document).ready(function($) {
         $button.prop('disabled', true).addClass('throbbing');
         $status.text('Working...').addClass('describe-bulk-status--active');
 
-        bulk_descriptions(attachmentIds).then((result) => {
+        bulk_descriptions(attachmentIds, ['alt', 'title', 'caption', 'description'], disableRankMath).then((result) => {
             const updatedCount = result.updated ? result.updated.length : 0;
             const errorCount = result.errors ? Object.keys(result.errors).length : 0;
             let message = `Updated ${updatedCount} image${updatedCount === 1 ? '' : 's'}.`;
@@ -586,12 +609,14 @@ jQuery(document).ready(function($) {
     function add_bulk_describe_button() {
         const $listContainer = $('.tablenav.top .actions');
         if ($listContainer.length && !$listContainer.find('.describe-bulk-button').length) {
-            $listContainer.append('<button type="button" class="button describe-bulk-button">Describe Selected</button><span class="describe-bulk-status"></span>');
+            const checked = Number(w321descritptor.disable_rankmath_filters || 0) === 1 ? 'checked' : '';
+            $listContainer.append(`<span class="describe-bulk-controls"><button type="button" class="button describe-bulk-button">Describe Selected</button><label class="wd-bulk-rankmath-toggle"><input type="checkbox" class="wd-disable-rankmath-filters-bulk" ${checked} /> Disable Rank Math filters</label><span class="describe-bulk-status"></span></span>`);
         }
 
         const $gridContainer = $('.media-toolbar-secondary');
         if ($gridContainer.length && !$gridContainer.find('.describe-bulk-button').length) {
-            $gridContainer.append('<button type="button" class="button describe-bulk-button">Describe Selected</button><span class="describe-bulk-status"></span>');
+            const checked = Number(w321descritptor.disable_rankmath_filters || 0) === 1 ? 'checked' : '';
+            $gridContainer.append(`<span class="describe-bulk-controls"><button type="button" class="button describe-bulk-button">Describe Selected</button><label class="wd-bulk-rankmath-toggle"><input type="checkbox" class="wd-disable-rankmath-filters-bulk" ${checked} /> Disable Rank Math filters</label><span class="describe-bulk-status"></span></span>`);
         }
     }
 

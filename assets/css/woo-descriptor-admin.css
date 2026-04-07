@@ -55,6 +55,22 @@
   max-width: 420px;
 }
 
+.wd-rankmath-toggle-row {
+  flex-basis: 100%;
+}
+
+.wd-rankmath-toggle-row label,
+.wd-bulk-rankmath-toggle {
+  font-size: 11px;
+  color: #50575e;
+}
+
+.describe-bulk-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .delete-attachment {
     clear: both;
     display: block !important;
