@@ -3,7 +3,7 @@
  * Plugin Name: WP Image Descriptor
  * Plugin URI:  https://descriptor.web321.co/
  * Description: Describes product images for WooCommerce products, populates media meta, and provides a "Try again" feature for generating new descriptions.
- * Version:     1.5.4
+ * Version:     1.5.5
  * Author: dewolfe001
  * Author URI: https://web321.co/
  * Text Domain: woo-descriptor
@@ -15,7 +15,7 @@ defined('ABSPATH') || exit;
 // Define plugin constants.
 define( 'WD_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WD_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'WD_VERSION', '1.5.4' );
+define( 'WD_VERSION', '1.5.5' );
 define( 'WD_NONCE_ACTION', 'descriptor_action' );
 define( 'WD_API_ENDPOINT', 'https://descriptor.web321.co/wp-json/woo-descriptor/v1' );
 define( 'WD_RELEASE_API_ENDPOINT', 'https://web321.co/wp-json/release-api/v1/plugins/slug/wp-descriptor' );
@@ -77,7 +77,8 @@ class WooDescriptor {
             wp_localize_script('woo-descriptor-admin-js', 'w321descritptor', [
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'account_status' => $account_status, 
-                'descriptor_nonce'    => $nonce
+                'descriptor_nonce'    => $nonce,
+                'disable_rankmath_filters' => (int) get_option( 'wd_disable_rankmath_filters', 0 ),
             ]);
             
         }
@@ -131,6 +132,18 @@ class WooDescriptor {
             'woo_descriptor_settings_group',
             'wd_account_key',
             [ 'sanitize_callback' => 'sanitize_text_field' ]
+        );
+
+        register_setting(
+            'woo_descriptor_settings_group',
+            'wd_disable_rankmath_filters',
+            [
+                'sanitize_callback' => static function( $value ) {
+                    return empty( $value ) ? 0 : 1;
+                },
+                'default' => 0,
+                'type' => 'integer',
+            ]
         );
     }
 
@@ -197,6 +210,25 @@ class WooDescriptor {
                                 ><?php echo esc_textarea( $supplemental_info ); ?></textarea>
                             </td>
                         </tr>
+                        <tr>
+                            <th scope="row">
+                                <label for="wd_disable_rankmath_filters"><?php esc_html_e( 'Rank Math Compatibility Mode', 'woo-descriptor' ); ?></label>
+                            </th>
+                            <td>
+                                <?php $disable_rankmath_filters = (int) get_option( 'wd_disable_rankmath_filters', 0 ); ?>
+                                <label for="wd_disable_rankmath_filters">
+                                    <input
+                                        type="checkbox"
+                                        name="wd_disable_rankmath_filters"
+                                        id="wd_disable_rankmath_filters"
+                                        value="1"
+                                        <?php checked( 1, $disable_rankmath_filters ); ?>
+                                    />
+                                    <?php esc_html_e( 'Default to disabling Rank Math filters while Descriptor runs.', 'woo-descriptor' ); ?>
+                                </label>
+                                <p class="description"><?php esc_html_e( 'You can still override this on each Describe action in the media UI.', 'woo-descriptor' ); ?></p>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
                 <?php submit_button( __( 'Save Settings', 'woo-descriptor' ) ); ?>
@@ -250,8 +282,15 @@ class WooDescriptor {
         }
         $fields = isset( $_POST['fields'] ) ? (array) $_POST['fields'] : [ 'alt', 'title', 'caption', 'description' ];
         $context = isset( $_POST['context'] ) ? sanitize_textarea_field( wp_unslash( $_POST['context'] ) ) : '';
+        $disable_rankmath = ! empty( $_POST['disable_rankmath'] );
 
-        $api_result = $this->fetch_descriptions_for_attachment( (int) $attachment, $fields, $context );
+        $api_result = $disable_rankmath
+            ? $this->run_with_rank_math_filters_disabled(
+                function() use ( $attachment, $fields, $context ) {
+                    return $this->fetch_descriptions_for_attachment( (int) $attachment, $fields, $context );
+                }
+            )
+            : $this->fetch_descriptions_for_attachment( (int) $attachment, $fields, $context );
 
         if ( is_wp_error( $api_result ) ) {
             wp_send_json_error(
@@ -286,6 +325,7 @@ class WooDescriptor {
         }
 
         $fields = isset( $_POST['fields'] ) ? (array) $_POST['fields'] : [ 'alt', 'title', 'caption', 'description' ];
+        $disable_rankmath = ! empty( $_POST['disable_rankmath'] );
 
         $results = [
             'updated' => [],
@@ -293,14 +333,28 @@ class WooDescriptor {
         ];
 
         foreach ( $attachments as $attachment_id ) {
-            $api_result = $this->fetch_descriptions_for_attachment( $attachment_id, $fields );
+            $api_result = $disable_rankmath
+                ? $this->run_with_rank_math_filters_disabled(
+                    function() use ( $attachment_id, $fields ) {
+                        return $this->fetch_descriptions_for_attachment( $attachment_id, $fields );
+                    }
+                )
+                : $this->fetch_descriptions_for_attachment( $attachment_id, $fields );
 
             if ( is_wp_error( $api_result ) ) {
                 $results['errors'][ $attachment_id ] = $api_result->get_error_message();
                 continue;
             }
 
-            $this->update_attachment_from_descriptions( $attachment_id, $api_result, $fields );
+            if ( $disable_rankmath ) {
+                $this->run_with_rank_math_filters_disabled(
+                    function() use ( $attachment_id, $api_result, $fields ) {
+                        $this->update_attachment_from_descriptions( $attachment_id, $api_result, $fields );
+                    }
+                );
+            } else {
+                $this->update_attachment_from_descriptions( $attachment_id, $api_result, $fields );
+            }
             $results['updated'][] = $attachment_id;
         }
 
@@ -389,7 +443,78 @@ class WooDescriptor {
             wp_update_post( $post_updates );
         }
     }
-    
+
+    /**
+     * Run a callback while temporarily removing Rank Math callbacks from active hooks.
+     */
+    private function run_with_rank_math_filters_disabled( callable $callback ) {
+        global $wp_filter;
+
+        $removed_callbacks = [];
+        $hooks = is_array( $wp_filter ) ? $wp_filter : [];
+
+        foreach ( $hooks as $hook_name => $hook ) {
+            if ( ! is_object( $hook ) || empty( $hook->callbacks ) ) {
+                continue;
+            }
+
+            foreach ( $hook->callbacks as $priority => $callbacks ) {
+                foreach ( $callbacks as $id => $callback_data ) {
+                    if ( empty( $callback_data['function'] ) ) {
+                        continue;
+                    }
+
+                    if ( ! $this->is_rank_math_callback( $callback_data['function'] ) ) {
+                        continue;
+                    }
+
+                    remove_filter( $hook_name, $callback_data['function'], $priority );
+                    $removed_callbacks[] = [
+                        'hook' => $hook_name,
+                        'function' => $callback_data['function'],
+                        'priority' => $priority,
+                        'accepted_args' => isset( $callback_data['accepted_args'] ) ? (int) $callback_data['accepted_args'] : 1,
+                    ];
+                }
+            }
+        }
+
+        try {
+            return $callback();
+        } finally {
+            foreach ( $removed_callbacks as $removed_callback ) {
+                add_filter(
+                    $removed_callback['hook'],
+                    $removed_callback['function'],
+                    $removed_callback['priority'],
+                    $removed_callback['accepted_args']
+                );
+            }
+        }
+    }
+
+    /**
+     * Check whether a callback appears to come from Rank Math.
+     */
+    private function is_rank_math_callback( $callback ) {
+        if ( is_string( $callback ) ) {
+            return false !== stripos( $callback, 'rank_math' ) || false !== stripos( $callback, 'rankmath' );
+        }
+
+        if ( is_array( $callback ) && isset( $callback[0] ) ) {
+            $class_name = is_object( $callback[0] ) ? get_class( $callback[0] ) : (string) $callback[0];
+            return false !== stripos( $class_name, 'RankMath' ) || false !== stripos( $class_name, 'rank_math' );
+        }
+
+        if ( $callback instanceof Closure ) {
+            $reflection = new ReflectionFunction( $callback );
+            $file_name = (string) $reflection->getFileName();
+            return false !== stripos( $file_name, 'seo-by-rank-math' ) || false !== stripos( $file_name, 'rank-math' );
+        }
+
+        return false;
+    }
+
 
 } // End of class WooDescriptor
 
