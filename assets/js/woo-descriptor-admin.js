@@ -331,7 +331,6 @@ jQuery(document).ready(function($) {
     function buildDescribeWrapper(attachmentId, options = {}) {
         const wrapperClass = ['wd-describe-wrapper', options.wrapperClass || ''].filter(Boolean).join(' ');
         const placeholder = options.contextPlaceholder || 'Add context for this image';
-        const rankMathChecked = Number(w321descritptor.disable_rankmath_filters || 0) === 1 ? 'checked' : '';
 
         return `
             <span class="${wrapperClass}">
@@ -345,25 +344,12 @@ jQuery(document).ready(function($) {
                 <span class="wd-context-row">
                     <textarea class="wd-context-input" rows="3" placeholder="${placeholder}"></textarea>
                 </span>
-                <span class="wd-rankmath-toggle-row">
-                    <label><input type="checkbox" class="wd-disable-rankmath-filters" ${rankMathChecked} /> Disable Rank Math filters for this run</label>
-                </span>
             </span>
         `;
     }
 
     function shouldDisableRankMathFilters($scope) {
-        const $localToggle = $scope.find('.wd-disable-rankmath-filters').first();
-        if ($localToggle.length) {
-            return $localToggle.is(':checked') ? 1 : 0;
-        }
-
-        const $bulkToggle = $('.wd-disable-rankmath-filters-bulk').first();
-        if ($bulkToggle.length) {
-            return $bulkToggle.is(':checked') ? 1 : 0;
-        }
-
-        return Number(w321descritptor.disable_rankmath_filters || 0) === 1 ? 1 : 0;
+        return Number(w321descritptor.disable_rankmath_filters || 0) === 1 && Number(w321descritptor.rank_math_active || 0) === 1 ? 1 : 0;
     }
 
     /**
@@ -609,14 +595,12 @@ jQuery(document).ready(function($) {
     function add_bulk_describe_button() {
         const $listContainer = $('.tablenav.top .actions');
         if ($listContainer.length && !$listContainer.find('.describe-bulk-button').length) {
-            const checked = Number(w321descritptor.disable_rankmath_filters || 0) === 1 ? 'checked' : '';
-            $listContainer.append(`<span class="describe-bulk-controls"><button type="button" class="button describe-bulk-button">Describe Selected</button><label class="wd-bulk-rankmath-toggle"><input type="checkbox" class="wd-disable-rankmath-filters-bulk" ${checked} /> Disable Rank Math filters</label><span class="describe-bulk-status"></span></span>`);
+            $listContainer.append(`<span class="describe-bulk-controls"><button type="button" class="button describe-bulk-button">Describe Selected</button><span class="describe-bulk-status"></span></span>`);
         }
 
         const $gridContainer = $('.media-toolbar-secondary');
         if ($gridContainer.length && !$gridContainer.find('.describe-bulk-button').length) {
-            const checked = Number(w321descritptor.disable_rankmath_filters || 0) === 1 ? 'checked' : '';
-            $gridContainer.append(`<span class="describe-bulk-controls"><button type="button" class="button describe-bulk-button">Describe Selected</button><label class="wd-bulk-rankmath-toggle"><input type="checkbox" class="wd-disable-rankmath-filters-bulk" ${checked} /> Disable Rank Math filters</label><span class="describe-bulk-status"></span></span>`);
+            $gridContainer.append(`<span class="describe-bulk-controls"><button type="button" class="button describe-bulk-button">Describe Selected</button><span class="describe-bulk-status"></span></span>`);
         }
     }
 

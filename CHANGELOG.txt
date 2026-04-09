@@ -1,3 +1,8 @@
+2026-04-09 - version 1.5.6
+* Fixed - Rank Math option now only appears on Descriptor settings and only when Rank Math is active.
+* Fixed - Removed Rank Math checkbox visibility from media modal and bulk media controls.
+* Added - Admin notice prompting users to review Descriptor settings when Rank Math is activated.
+
 2025-01-27 - version 1.0.2
 * Fixed - JSON decode bug
 

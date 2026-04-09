@@ -3,7 +3,7 @@
  * Plugin Name: WP Image Descriptor
  * Plugin URI:  https://descriptor.web321.co/
  * Description: Describes product images for WooCommerce products, populates media meta, and provides a "Try again" feature for generating new descriptions.
- * Version:     1.5.5
+ * Version:     1.5.6
  * Author: dewolfe001
  * Author URI: https://web321.co/
  * Text Domain: woo-descriptor
@@ -15,7 +15,7 @@ defined('ABSPATH') || exit;
 // Define plugin constants.
 define( 'WD_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WD_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'WD_VERSION', '1.5.5' );
+define( 'WD_VERSION', '1.5.6' );
 define( 'WD_NONCE_ACTION', 'descriptor_action' );
 define( 'WD_API_ENDPOINT', 'https://descriptor.web321.co/wp-json/woo-descriptor/v1' );
 define( 'WD_RELEASE_API_ENDPOINT', 'https://web321.co/wp-json/release-api/v1/plugins/slug/wp-descriptor' );
@@ -37,6 +37,10 @@ class WooDescriptor {
 
         // Register settings
         add_action( 'admin_init', [ $this, 'register_plugin_settings' ] );
+
+        // Rank Math activation notice
+        add_action( 'activated_plugin', [ $this, 'handle_rank_math_activation' ], 10, 2 );
+        add_action( 'admin_notices', [ $this, 'maybe_show_rank_math_settings_notice' ] );
 
         // AJAX handlers
         add_action( 'wp_ajax_w321get_descriptions', [ $this, 'ajax_generate_image_descriptions' ] );
@@ -79,6 +83,7 @@ class WooDescriptor {
                 'account_status' => $account_status, 
                 'descriptor_nonce'    => $nonce,
                 'disable_rankmath_filters' => (int) get_option( 'wd_disable_rankmath_filters', 0 ),
+                'rank_math_active' => $this->is_rank_math_active() ? 1 : 0,
             ]);
             
         }
@@ -90,6 +95,66 @@ class WooDescriptor {
     private function is_woo_descriptor_settings_page( $hook ) {
         // Adjust this based on your submenu slug
         return ( 'woocommerce_page_woo-descriptor-settings' === $hook );
+    }
+
+    /**
+     * Check whether Rank Math is active.
+     */
+    private function is_rank_math_active() {
+        if ( defined( 'RANK_MATH_VERSION' ) ) {
+            return true;
+        }
+
+        if ( ! function_exists( 'is_plugin_active' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        return is_plugin_active( 'seo-by-rank-math/rank-math.php' );
+    }
+
+    /**
+     * Flag that Rank Math was just activated so we can show a descriptor settings notice.
+     */
+    public function handle_rank_math_activation( $plugin, $network_wide ) {
+        unset( $network_wide );
+
+        if ( 'seo-by-rank-math/rank-math.php' !== $plugin ) {
+            return;
+        }
+
+        set_transient( 'wd_rank_math_activated_notice', 1, DAY_IN_SECONDS );
+    }
+
+    /**
+     * Show a one-time admin notice after Rank Math activation.
+     */
+    public function maybe_show_rank_math_settings_notice() {
+        if ( ! get_transient( 'wd_rank_math_activated_notice' ) ) {
+            return;
+        }
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        if ( ! $this->is_rank_math_active() ) {
+            delete_transient( 'wd_rank_math_activated_notice' );
+            return;
+        }
+
+        $settings_url = admin_url( 'admin.php?page=woo-descriptor-settings' );
+        $message = sprintf(
+            /* translators: %s is the descriptor settings URL. */
+            __( 'Rank Math was activated. Review your %s settings to configure Rank Math compatibility.', 'woo-descriptor' ),
+            '<a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'WP Image Descriptor', 'woo-descriptor' ) . '</a>'
+        );
+
+        printf(
+            '<div class="notice notice-info is-dismissible"><p>%s</p></div>',
+            wp_kses( $message, [ 'a' => [ 'href' => [] ] ] )
+        );
+
+        delete_transient( 'wd_rank_math_activated_notice' );
     }
 
     /**
@@ -210,25 +275,26 @@ class WooDescriptor {
                                 ><?php echo esc_textarea( $supplemental_info ); ?></textarea>
                             </td>
                         </tr>
-                        <tr>
-                            <th scope="row">
-                                <label for="wd_disable_rankmath_filters"><?php esc_html_e( 'Rank Math Compatibility Mode', 'woo-descriptor' ); ?></label>
-                            </th>
-                            <td>
-                                <?php $disable_rankmath_filters = (int) get_option( 'wd_disable_rankmath_filters', 0 ); ?>
-                                <label for="wd_disable_rankmath_filters">
-                                    <input
-                                        type="checkbox"
-                                        name="wd_disable_rankmath_filters"
-                                        id="wd_disable_rankmath_filters"
-                                        value="1"
-                                        <?php checked( 1, $disable_rankmath_filters ); ?>
-                                    />
-                                    <?php esc_html_e( 'Default to disabling Rank Math filters while Descriptor runs.', 'woo-descriptor' ); ?>
-                                </label>
-                                <p class="description"><?php esc_html_e( 'You can still override this on each Describe action in the media UI.', 'woo-descriptor' ); ?></p>
-                            </td>
-                        </tr>
+                        <?php if ( $this->is_rank_math_active() ) : ?>
+                            <tr>
+                                <th scope="row">
+                                    <label for="wd_disable_rankmath_filters"><?php esc_html_e( 'Rank Math Compatibility Mode', 'woo-descriptor' ); ?></label>
+                                </th>
+                                <td>
+                                    <?php $disable_rankmath_filters = (int) get_option( 'wd_disable_rankmath_filters', 0 ); ?>
+                                    <label for="wd_disable_rankmath_filters">
+                                        <input
+                                            type="checkbox"
+                                            name="wd_disable_rankmath_filters"
+                                            id="wd_disable_rankmath_filters"
+                                            value="1"
+                                            <?php checked( 1, $disable_rankmath_filters ); ?>
+                                        />
+                                        <?php esc_html_e( 'Disable Rank Math filters while Descriptor runs.', 'woo-descriptor' ); ?>
+                                    </label>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
                 <?php submit_button( __( 'Save Settings', 'woo-descriptor' ) ); ?>
@@ -282,7 +348,7 @@ class WooDescriptor {
         }
         $fields = isset( $_POST['fields'] ) ? (array) $_POST['fields'] : [ 'alt', 'title', 'caption', 'description' ];
         $context = isset( $_POST['context'] ) ? sanitize_textarea_field( wp_unslash( $_POST['context'] ) ) : '';
-        $disable_rankmath = ! empty( $_POST['disable_rankmath'] );
+        $disable_rankmath = $this->is_rank_math_active() && ! empty( $_POST['disable_rankmath'] );
 
         $api_result = $disable_rankmath
             ? $this->run_with_rank_math_filters_disabled(
@@ -325,7 +391,7 @@ class WooDescriptor {
         }
 
         $fields = isset( $_POST['fields'] ) ? (array) $_POST['fields'] : [ 'alt', 'title', 'caption', 'description' ];
-        $disable_rankmath = ! empty( $_POST['disable_rankmath'] );
+        $disable_rankmath = $this->is_rank_math_active() && ! empty( $_POST['disable_rankmath'] );
 
         $results = [
             'updated' => [],
