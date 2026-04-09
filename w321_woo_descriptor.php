@@ -152,7 +152,7 @@ class WooDescriptor {
      */
     public function render_settings_page() {
         // Check user capabilities, etc.
-        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+        if (! current_user_can( 'upload_files' ) ) {
             return;
         }
 
