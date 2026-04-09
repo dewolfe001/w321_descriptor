@@ -102,20 +102,7 @@ jQuery(document).ready(function($) {
 
         const $link = $(this);
         
-        var editAttachmentUrl = $(this).closest('.details').find('.edit-attachment').attr('href');
-        var attachmentId  = parseInt($link.data('attachment-id'), 10);
-
-        if (editAttachmentUrl) {
-            // Use URLSearchParams to parse the URL and get the `post` parameter
-            const urlParams = new URLSearchParams(editAttachmentUrl.split('?')[1]); // Get query part of the URL
-            attachmentId = urlParams.get('post'); // Extract the `post` parameter
-        }
-        else {
-            // the upload link itsef
-            editAttachmentUrl = $(this).attr('href');
-            const urlParams = new URLSearchParams(editAttachmentUrl.split('?')[1]); // Get query part of the URL
-            attachmentId = urlParams.get('item'); // Extract the `post` parameter            
-        }
+        const attachmentId  = resolveAttachmentId($link);
 
         // go to the server locally with admin-ajax.php 
 		// const descriptions = get_descriptions(attachmentId);
@@ -373,6 +360,29 @@ jQuery(document).ready(function($) {
     }
 
     /**
+     * Append "Describe Image" controls on media attachment details panels
+     * (e.g. /wp-admin/upload.php?item=123 and list/grid sidebars).
+     */
+    function addDescribeLinksToMediaAttachmentDetails($container) {
+        $container.find('.attachment-details').each(function() {
+            const $details = $(this);
+            if ($details.find('.wd-describe-wrapper').length) {
+                return;
+            }
+
+            const attachmentId = resolveAttachmentId($details);
+            if (!attachmentId) {
+                return;
+            }
+
+            const $anchor = $details.find('.actions, .setting[data-setting="alt"], .attachment-info').first();
+            if ($anchor.length) {
+                $anchor.before(buildDescribeWrapper(attachmentId, { wrapperClass: 'wd-describe-wrapper--stacked' }));
+            }
+        });
+    }
+
+    /**
      * Append "Describe Image" buttons on the attachment edit page.
      */
     function addDescribeLinksToAttachmentEditPage($container) {
@@ -410,6 +420,44 @@ jQuery(document).ready(function($) {
 
         const match = window.location.search.match(/post=(\d+)/);
         return match ? parseInt(match[1], 10) : 0;
+    }
+
+    function resolveAttachmentId($element) {
+        const fromData = parseInt($element.data('attachment-id'), 10);
+        if (fromData) {
+            return fromData;
+        }
+
+        const editHref = $element.closest('.details, .attachment-info, .attachment-details').find('.edit-attachment').attr('href') || '';
+        const fromEditHref = getIdFromUrl(editHref, ['post', 'item']);
+        if (fromEditHref) {
+            return fromEditHref;
+        }
+
+        const currentItem = getIdFromUrl(window.location.href, ['item', 'post']);
+        if (currentItem) {
+            return currentItem;
+        }
+
+        return getAttachmentIdFromPage();
+    }
+
+    function getIdFromUrl(url, keys = []) {
+        if (!url || url.indexOf('?') === -1) {
+            return 0;
+        }
+
+        const query = url.split('?')[1] || '';
+        const params = new URLSearchParams(query);
+
+        for (const key of keys) {
+            const value = parseInt(params.get(key), 10);
+            if (value) {
+                return value;
+            }
+        }
+
+        return 0;
     }
 
     function get_descriptions(attachment, fields = ['alt', 'title', 'caption', 'description'], context = '', disableRankMath = 0) {
@@ -566,13 +614,8 @@ jQuery(document).ready(function($) {
                             const $added = $(addedNode);
 
                             // If the node or its descendants contain .attachment-info .details
-                            if ($added.is('.attachment-info .details')) {
-                                addDescribeLinksToDetails($added);
-                                addDescribeLinksToEditAttachments($added);
-                            } else {
-                                addDescribeLinksToEditAttachments($added);
-                            }
-
+                            addDescribeLinksToEditAttachments($added);
+                            addDescribeLinksToMediaAttachmentDetails($added);
                             addDescribeLinksToAttachmentEditPage($added);
                         }
                     });
@@ -613,6 +656,7 @@ jQuery(document).ready(function($) {
         console.log('Initializing MutationObserver for Media Library or Post Editor.');
         initializeObserver();
         addDescribeLinksToEditAttachments($(document));
+        addDescribeLinksToMediaAttachmentDetails($(document));
         addDescribeLinksToAttachmentEditPage($(document));
         add_bulk_describe_button();
     }
