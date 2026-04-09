@@ -3,7 +3,7 @@ jQuery(document).ready(function($) {
 
     var wdescript_txt = '';
 
-    $(document).on('click', '.wdescipt em', function(e){
+    $(document).on('click', '.wdescript em', function(e){
         e.preventDefault();
         $(this).parent().remove();
     });
@@ -160,7 +160,7 @@ jQuery(document).ready(function($) {
                         
                             $(this).after($suggestAltDiv);
                             $('#attachment-details-alt-text-suggest').fadeIn(100);
-                            $suggestAltDiv.addClass('wdescipt');
+                            $suggestAltDiv.addClass('wdescript');
                             var detailsAltSuggest = descriptions.alt;
                             $suggestAltDiv.html('<strong>Alt Text</strong><em>X</em><br/><span>' + detailsAltSuggest + '</span><br/><a href="#" id="alttext-replace" class="wdescript-replace">Use</a> <a href="#" id="alttext-append" class="wdescript-append">Append</a> <a href="#" id="alttext-retry" class="wdescript-retry">Try Again</a> <a href="#" id="alttext-problem">+</a>');
 							});
@@ -198,7 +198,7 @@ jQuery(document).ready(function($) {
 					
 						$(this).after($suggestTitleDiv);
 						$('#attachment-details-title-suggest').fadeIn(120);
-						$suggestTitleDiv.addClass('wdescipt');
+						$suggestTitleDiv.addClass('wdescript');
 						var detailsTitleSuggest = descriptions.title;
 						$suggestTitleDiv.html('<strong>Title</strong><em>X</em><br/><span>' + detailsTitleSuggest + '</span><br/><a href="#" id="title-replace" class="wdescript-replacet">Use</a> <a href="#" id="title-append" class="wdescript-appendt">Append</a> <a href="#" id="title-retry" class="wdescript-retry">Try Again</a> <a href="#" id="title-problem">+</a>');
 					});
@@ -239,7 +239,7 @@ jQuery(document).ready(function($) {
                 
 							$(this).after($suggestCaptionDiv);
 							$('#attachment-details-caption-suggest').fadeIn(140);
-							$suggestCaptionDiv.addClass('wdescipt');
+							$suggestCaptionDiv.addClass('wdescript');
 							var detailsCaptionSuggest = descriptions.caption;
 							$suggestCaptionDiv.html('<strong>Caption</strong><em>X</em><br/><span>' + detailsCaptionSuggest + '</span><br/><a href="#" id="caption-replace" class="wdescript-replace">Use</a> <a href="#" id="caption-append" class="wdescript-append">Append</a> <a href="#" id="caption-retry" class="wdescript-retry">Try Again</a> <a href="#" id="caption-problem">+</a>');
 						});
@@ -279,7 +279,7 @@ jQuery(document).ready(function($) {
 						
 							$(this).after($suggestDescriptDiv);
 							$('#attachment-details-description-suggest').fadeIn(160);
-							$suggestDescriptDiv.addClass('wdescipt');
+							$suggestDescriptDiv.addClass('wdescript');
 							var detailsDescriptSuggest = descriptions.description;
 							$suggestDescriptDiv.html('<strong>Description</strong><em>X</em><br/><span>' + detailsDescriptSuggest + '</span><br/><a href="#" id="description-replace" class="wdescript-replace">Use</a> <a href="#" id="description-append" class="wdescript-append">Append</a> <a href="#" id="description-retry" class="wdescript-retry">Try Again</a> <a href="#" id="description-problem">+</a>');
 						});
