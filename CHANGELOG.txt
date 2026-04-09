@@ -1,3 +1,6 @@
+2026-04-09 - version 1.5.7
+* Fixed - Descriptor API response parsing to support direct JSON, fenced JSON, BOM/whitespace, and avoid "Failed to decode outer JSON: Syntax error" failures.
+
 2026-04-09 - version 1.5.6
 * Fixed - Rank Math option now only appears on Descriptor settings and only when Rank Math is active.
 * Fixed - Removed Rank Math checkbox visibility from media modal and bulk media controls.
