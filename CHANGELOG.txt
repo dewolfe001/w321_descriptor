@@ -1,3 +1,6 @@
+2026-04-10 - version 1.5.10
+* Fixed - Save Text now reads the active/visible media field values first so WordPress submits changed attachment fields in save-attachment requests.
+
 2026-04-10 - version 1.5.9
 * Added - "Save Text" button beside Describe Image so updated Alt/Title/Caption/Description values can be saved directly from media details.
 

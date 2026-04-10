@@ -465,14 +465,50 @@ jQuery(document).ready(function($) {
     }
 
     function getFirstFilledValue(selectors = []) {
+        let firstExistingValue = '';
+        let firstNonEmptyValue = '';
+
         for (const selector of selectors) {
-            const $field = $(selector).first();
-            if ($field.length) {
-                return ($field.val() || '').toString();
+            const $fields = $(selector);
+            if (!$fields.length) {
+                continue;
+            }
+
+            // Track the first field we can find as a final fallback.
+            if (!firstExistingValue) {
+                firstExistingValue = ($fields.first().val() || '').toString();
+            }
+
+            // Prefer visible fields first because media modals often keep hidden duplicates.
+            const $visibleField = $fields.filter(':visible').first();
+            if ($visibleField.length) {
+                const visibleValue = ($visibleField.val() || '').toString();
+                if (visibleValue.trim() !== '') {
+                    return visibleValue;
+                }
+                if (!firstNonEmptyValue && visibleValue !== '') {
+                    firstNonEmptyValue = visibleValue;
+                }
+            }
+
+            // Then inspect any matching field for a non-empty value.
+            for (let i = 0; i < $fields.length; i += 1) {
+                const value = ($($fields[i]).val() || '').toString();
+                if (value.trim() !== '') {
+                    return value;
+                }
+
+                if (!firstNonEmptyValue && value !== '') {
+                    firstNonEmptyValue = value;
+                }
             }
         }
 
-        return '';
+        if (firstNonEmptyValue) {
+            return firstNonEmptyValue;
+        }
+
+        return firstExistingValue;
     }
 
     function getAttachmentFieldsFromDom() {
