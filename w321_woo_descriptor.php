@@ -3,7 +3,7 @@
  * Plugin Name: WP Image Descriptor
  * Plugin URI:  https://descriptor.web321.co/
  * Description: Describes product images for WooCommerce products, populates media meta, and provides a "Try again" feature for generating new descriptions.
- * Version:     1.5.10
+ * Version:     1.5.11
  * Author: dewolfe001
  * Author URI: https://web321.co/
  * Text Domain: woo-descriptor
@@ -15,7 +15,7 @@ defined('ABSPATH') || exit;
 // Define plugin constants.
 define( 'WD_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WD_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'WD_VERSION', '1.5.10' );
+define( 'WD_VERSION', '1.5.11' );
 define( 'WD_NONCE_ACTION', 'descriptor_action' );
 define( 'WD_API_ENDPOINT', 'https://descriptor.web321.co/wp-json/woo-descriptor/v1' );
 define( 'WD_RELEASE_API_ENDPOINT', 'https://web321.co/wp-json/release-api/v1/plugins/slug/wp-descriptor' );
