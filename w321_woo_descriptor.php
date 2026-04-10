@@ -3,7 +3,7 @@
  * Plugin Name: WP Image Descriptor
  * Plugin URI:  https://descriptor.web321.co/
  * Description: Describes product images for WooCommerce products, populates media meta, and provides a "Try again" feature for generating new descriptions.
- * Version:     1.5.7
+ * Version:     1.5.8
  * Author: dewolfe001
  * Author URI: https://web321.co/
  * Text Domain: woo-descriptor
@@ -15,7 +15,7 @@ defined('ABSPATH') || exit;
 // Define plugin constants.
 define( 'WD_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WD_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'WD_VERSION', '1.5.7' );
+define( 'WD_VERSION', '1.5.8' );
 define( 'WD_NONCE_ACTION', 'descriptor_action' );
 define( 'WD_API_ENDPOINT', 'https://descriptor.web321.co/wp-json/woo-descriptor/v1' );
 define( 'WD_RELEASE_API_ENDPOINT', 'https://web321.co/wp-json/release-api/v1/plugins/slug/wp-descriptor' );
@@ -299,6 +299,7 @@ class WooDescriptor {
                 </table>
                 <?php submit_button( __( 'Save Settings', 'woo-descriptor' ) ); ?>
             </form>
+            <?php $this->render_api_usage_log_footer(); ?>
         </div>
         <style>
             a.description_button {
@@ -324,9 +325,72 @@ class WooDescriptor {
                 box-shadow: 1px 1px 3px rgba(35, 35, 35, 0.6);
                 color: #444;
                 background-color: #f9f9f6;                
-            }            
+            }
+            .wd-api-log-footer pre {
+                margin: 0;
+                white-space: pre-wrap;
+                word-break: break-word;
+                max-height: 180px;
+                overflow: auto;
+            }
+            .wd-api-log-footer .widefat th,
+            .wd-api-log-footer .widefat td {
+                vertical-align: top;
+            }
             
         </style>
+        <?php
+    }
+
+    /**
+     * Render a footer panel with recent API usage entries.
+     */
+    private function render_api_usage_log_footer() {
+        $entries = get_option( 'wd_api_usage_log', [] );
+        if ( ! is_array( $entries ) ) {
+            $entries = [];
+        }
+
+        ?>
+        <hr>
+        <div class="wd-api-log-footer">
+            <h2><?php esc_html_e( 'Recent Descriptor API Activity', 'woo-descriptor' ); ?></h2>
+            <p class="description"><?php esc_html_e( 'Shows the latest API calls from this site, including media ID, context prompt, and API response.', 'woo-descriptor' ); ?></p>
+            <?php if ( empty( $entries ) ) : ?>
+                <p><?php esc_html_e( 'No API activity has been logged yet.', 'woo-descriptor' ); ?></p>
+            <?php else : ?>
+                <table class="widefat striped">
+                    <thead>
+                        <tr>
+                            <th><?php esc_html_e( 'Date', 'woo-descriptor' ); ?></th>
+                            <th><?php esc_html_e( 'Media ID', 'woo-descriptor' ); ?></th>
+                            <th><?php esc_html_e( 'Context Prompt', 'woo-descriptor' ); ?></th>
+                            <th><?php esc_html_e( 'API Response', 'woo-descriptor' ); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ( $entries as $entry ) : ?>
+                            <tr>
+                                <td>
+                                    <?php
+                                    $logged_at = isset( $entry['timestamp'] ) ? (string) $entry['timestamp'] : '';
+                                    echo esc_html( $logged_at );
+                                    ?>
+                                </td>
+                                <td>
+                                    <?php
+                                    $attachment_id = isset( $entry['attachment_id'] ) ? (int) $entry['attachment_id'] : 0;
+                                    echo esc_html( (string) $attachment_id );
+                                    ?>
+                                </td>
+                                <td><pre><?php echo esc_html( isset( $entry['context'] ) ? (string) $entry['context'] : '' ); ?></pre></td>
+                                <td><pre><?php echo esc_html( isset( $entry['response'] ) ? (string) $entry['response'] : '' ); ?></pre></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
         <?php
     }
 
@@ -464,6 +528,8 @@ class WooDescriptor {
         }
 
         $response_body = wp_remote_retrieve_body( $response );
+        $this->log_api_usage( $attachment_id, $context, $response_body );
+
         if ( '{"error":"Invalid or expired key."}' === $response_body ) {
             return new WP_Error( 'descriptor_invalid_key', __( 'Invalid access key.', 'woo-descriptor' ) );
         }
@@ -479,6 +545,34 @@ class WooDescriptor {
         }
 
         return $api_result;
+    }
+
+    /**
+     * Persist a rolling window of recent API calls for troubleshooting.
+     */
+    private function log_api_usage( int $attachment_id, string $context, string $response_body ) {
+        $entries = get_option( 'wd_api_usage_log', [] );
+        if ( ! is_array( $entries ) ) {
+            $entries = [];
+        }
+
+        $trimmed_response = wp_strip_all_tags( $response_body );
+        if ( strlen( $trimmed_response ) > 4000 ) {
+            $trimmed_response = substr( $trimmed_response, 0, 4000 ) . '…';
+        }
+
+        array_unshift(
+            $entries,
+            [
+                'timestamp' => current_time( 'mysql' ),
+                'attachment_id' => $attachment_id,
+                'context' => sanitize_textarea_field( $context ),
+                'response' => $trimmed_response,
+            ]
+        );
+
+        $entries = array_slice( $entries, 0, 20 );
+        update_option( 'wd_api_usage_log', $entries, false );
     }
 
     /**
