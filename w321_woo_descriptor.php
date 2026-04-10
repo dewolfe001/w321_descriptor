@@ -3,7 +3,7 @@
  * Plugin Name: WP Image Descriptor
  * Plugin URI:  https://descriptor.web321.co/
  * Description: Describes product images for WooCommerce products, populates media meta, and provides a "Try again" feature for generating new descriptions.
- * Version:     1.5.6
+ * Version:     1.5.7
  * Author: dewolfe001
  * Author URI: https://web321.co/
  * Text Domain: woo-descriptor
@@ -15,7 +15,7 @@ defined('ABSPATH') || exit;
 // Define plugin constants.
 define( 'WD_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WD_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'WD_VERSION', '1.5.6' );
+define( 'WD_VERSION', '1.5.7' );
 define( 'WD_NONCE_ACTION', 'descriptor_action' );
 define( 'WD_API_ENDPOINT', 'https://descriptor.web321.co/wp-json/woo-descriptor/v1' );
 define( 'WD_RELEASE_API_ENDPOINT', 'https://web321.co/wp-json/release-api/v1/plugins/slug/wp-descriptor' );
@@ -780,51 +780,64 @@ class TimeBasedKeyGenerator {
 
 
 /**
- * Extract nested JSON from API response
+ * Decode JSON safely while tolerating UTF-8 BOM and leading/trailing whitespace.
+ *
+ * @param string $json JSON string.
+ * @return array|null
+ */
+function descriptor_decode_json_string( $json ) {
+    $normalized = trim( (string) $json );
+    $normalized = preg_replace( '/^\xEF\xBB\xBF/', '', $normalized );
+
+    $decoded = json_decode( $normalized, true );
+    if ( JSON_ERROR_NONE === json_last_error() ) {
+        return $decoded;
+    }
+
+    return null;
+}
+
+/**
+ * Extract nested JSON from API response.
  * 
- * @param string $api_response The raw API response containing nested JSON
- * @return array|WP_Error Returns parsed JSON array or WP_Error on failure
+ * Supports several response formats:
+ * 1) Plain JSON object with title/alt/caption/description fields.
+ * 2) JSON object whose "description" field contains a ```json fenced block.
+ * 3) Raw markdown/string body that directly contains a ```json fenced block.
+ *
+ * @param string $api_response The raw API response.
+ * @return array|WP_Error Returns parsed JSON array or WP_Error on failure.
  */
 function descriptor_extract_nested_json_wp($api_response) {
-    // First, decode the outer JSON
-    $outer_json = json_decode($api_response, true);
-    
-    // Check if json_decode failed
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        return new WP_Error(
-            'json_decode_error',
-            'Failed to decode outer JSON: ' . json_last_error_msg()
-        );
+    $outer_json = descriptor_decode_json_string( $api_response );
+
+    // Format 1: already the desired JSON shape.
+    if ( is_array( $outer_json ) && isset( $outer_json['title'], $outer_json['alt'], $outer_json['caption'], $outer_json['description'] ) ) {
+        return $outer_json;
     }
-    
-    // Extract JSON between ```json and ``` markers
-    if (!isset($outer_json['description'])) {
-        return new WP_Error(
-            'missing_description',
-            'No description field found in API response'
-        );
+
+    // Format 2: JSON with description text that contains fenced JSON.
+    if ( is_array( $outer_json ) && isset( $outer_json['description'] ) && is_string( $outer_json['description'] ) ) {
+        if ( preg_match( '/```json\s*(.*?)\s*```/is', $outer_json['description'], $matches ) ) {
+            $inner_json = descriptor_decode_json_string( $matches[1] );
+            if ( is_array( $inner_json ) ) {
+                return $inner_json;
+            }
+        }
     }
-    
-    // Use regex to extract the JSON content
-    if (!preg_match('/```json\n(.*?)\n```/s', $outer_json['description'], $matches)) {
-        return new WP_Error(
-            'no_json_found',
-            'No JSON found in markdown code blocks'
-        );
+
+    // Format 3: raw body with fenced JSON (not wrapped in an outer JSON object).
+    if ( preg_match( '/```json\s*(.*?)\s*```/is', (string) $api_response, $matches ) ) {
+        $inner_json = descriptor_decode_json_string( $matches[1] );
+        if ( is_array( $inner_json ) ) {
+            return $inner_json;
+        }
     }
-    
-    // Parse the extracted JSON
-    $inner_json = json_decode($matches[1], true);
-    
-    // Check if second json_decode failed
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        return new WP_Error(
-            'inner_json_error',
-            'Failed to decode inner JSON: ' . json_last_error_msg()
-        );
-    }
-    
-    return $inner_json;
+
+    return new WP_Error(
+        'descriptor_unrecognized_response',
+        __( 'Unable to parse Descriptor API response.', 'woo-descriptor' )
+    );
 }
 
 /**
@@ -841,10 +854,10 @@ function descriptor_process_api_response($api_response) {
     }
     
     // Use the extracted data
-    $title = sanitize_text_field($result['title']);
-    $alt = sanitize_text_field($result['alt']);
-    $caption = wp_kses_post($result['caption']);
-    $description = wp_kses_post($result['description']);
+    $title = isset( $result['title'] ) ? sanitize_text_field( $result['title'] ) : '';
+    $alt = isset( $result['alt'] ) ? sanitize_text_field( $result['alt'] ) : '';
+    $caption = isset( $result['caption'] ) ? wp_kses_post( $result['caption'] ) : '';
+    $description = isset( $result['description'] ) ? wp_kses_post( $result['description'] ) : '';
     
     return [
         'title' => $title,
