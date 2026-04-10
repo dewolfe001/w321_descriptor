@@ -75,6 +75,10 @@
   color: #ffffff;
 }
 
+.wd-describe-wrapper .wd-save-attachment {
+  flex-basis: 100%;
+}
+
 .wd-context-row {
   display: none;
   flex-basis: 100%;
