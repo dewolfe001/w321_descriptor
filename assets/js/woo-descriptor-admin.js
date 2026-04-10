@@ -327,10 +327,14 @@ jQuery(document).ready(function($) {
                 >
                    Describe Image
                 </a>
+                <button type="button" class="button button-secondary wd-save-attachment" data-attachment-id="${attachmentId}">
+                    Save Text
+                </button>
                 <button type="button" class="button describe-context-toggle">Context</button>
                 <span class="wd-context-row">
                     <textarea class="wd-context-input" rows="3" placeholder="${placeholder}"></textarea>
                 </span>
+                <span class="wd-save-status" aria-live="polite"></span>
             </span>
         `;
     }
@@ -458,6 +462,90 @@ jQuery(document).ready(function($) {
         }
 
         return 0;
+    }
+
+    function getFirstFilledValue(selectors = []) {
+        for (const selector of selectors) {
+            const $field = $(selector).first();
+            if ($field.length) {
+                return ($field.val() || '').toString();
+            }
+        }
+
+        return '';
+    }
+
+    function getAttachmentFieldsFromDom() {
+        return {
+            alt: getFirstFilledValue([
+                '#attachment-details-alt-text',
+                '#attachment-details-two-column-alt-text',
+                '#attachment-details-one-column-alt-text'
+            ]),
+            title: getFirstFilledValue([
+                '#attachment-details-title',
+                '#attachment-details-two-column-title',
+                '#attachment-details-one-column-title',
+                '#title'
+            ]),
+            caption: getFirstFilledValue([
+                '#attachment-details-caption',
+                '#attachment-details-two-column-caption',
+                '#attachment-details-one-column-caption',
+                '#excerpt'
+            ]),
+            description: getFirstFilledValue([
+                '#attachment-details-description',
+                '#attachment-details-two-column-description',
+                '#attachment-details-one-column-description',
+                '#content'
+            ])
+        };
+    }
+
+    function updateSaveStatus($scope, message, stateClass) {
+        const $status = $scope.find('.wd-save-status').first();
+        if (!$status.length) {
+            return;
+        }
+
+        $status.removeClass('is-success is-error is-progress');
+        if (stateClass) {
+            $status.addClass(stateClass);
+        }
+
+        $status.text(message || '');
+    }
+
+    function handle_save_attachment(e) {
+        e.preventDefault();
+
+        const $button = $(e.currentTarget);
+        const $wrapper = $button.closest('.wd-describe-wrapper');
+        const attachmentId = resolveAttachmentId($button);
+        if (!attachmentId) {
+            updateSaveStatus($wrapper, 'Unable to find image ID.', 'is-error');
+            return;
+        }
+
+        const values = getAttachmentFieldsFromDom();
+        const model = wp.media.attachment(attachmentId);
+
+        $button.prop('disabled', true).addClass('throbbing');
+        updateSaveStatus($wrapper, 'Saving…', 'is-progress');
+
+        model.save({
+            title: values.title,
+            caption: values.caption,
+            description: values.description,
+            alt: values.alt
+        }).then(() => {
+            updateSaveStatus($wrapper, 'Saved.', 'is-success');
+        }).catch(() => {
+            updateSaveStatus($wrapper, 'Save failed.', 'is-error');
+        }).finally(() => {
+            $button.prop('disabled', false).removeClass('throbbing');
+        });
     }
 
     function get_descriptions(attachment, fields = ['alt', 'title', 'caption', 'description'], context = '', disableRankMath = 0) {
@@ -662,5 +750,6 @@ jQuery(document).ready(function($) {
     }
 
     $(document).on('click', '.describe-bulk-button', handle_bulk_describe);
+    $(document).on('click', '.wd-save-attachment', handle_save_attachment);
 
 });

@@ -71,6 +71,24 @@
   gap: 8px;
 }
 
+.wd-save-status {
+  font-size: 12px;
+  font-weight: 600;
+  min-height: 18px;
+}
+
+.wd-save-status.is-progress {
+  color: #50575e;
+}
+
+.wd-save-status.is-success {
+  color: #007017;
+}
+
+.wd-save-status.is-error {
+  color: #b32d2e;
+}
+
 .delete-attachment {
     clear: both;
     display: block !important;
