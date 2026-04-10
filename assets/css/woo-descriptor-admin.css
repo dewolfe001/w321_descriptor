@@ -57,6 +57,24 @@
   float: none;
 }
 
+.wd-describe-wrapper .wd-save-attachment,
+.wd-describe-wrapper .describe-context-toggle {
+  border: 2px solid #ffffff;
+  border-radius: 4px;
+  background-color: #40cc40;
+  color: #ffffff;
+  box-shadow: 0px 1px 4px rgba(40, 60, 40, 0.25);
+}
+
+.wd-describe-wrapper .wd-save-attachment:hover,
+.wd-describe-wrapper .wd-save-attachment:focus,
+.wd-describe-wrapper .describe-context-toggle:hover,
+.wd-describe-wrapper .describe-context-toggle:focus {
+  border-color: #ffffff;
+  background-color: #40cc40;
+  color: #ffffff;
+}
+
 .wd-context-row {
   display: none;
   flex-basis: 100%;

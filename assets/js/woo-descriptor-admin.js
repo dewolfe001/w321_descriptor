@@ -327,14 +327,14 @@ jQuery(document).ready(function($) {
                 >
                    Describe Image
                 </a>
-                <button type="button" class="button button-secondary wd-save-attachment" data-attachment-id="${attachmentId}">
-                    Save Text
-                </button>
                 <button type="button" class="button describe-context-toggle">Context</button>
                 <span class="wd-context-row">
                     <textarea class="wd-context-input" rows="3" placeholder="${placeholder}"></textarea>
                 </span>
                 <span class="wd-save-status" aria-live="polite"></span>
+                <button type="button" class="button button-secondary wd-save-attachment" data-attachment-id="${attachmentId}">
+                    Save Text
+                </button>
             </span>
         `;
     }
