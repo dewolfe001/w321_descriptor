@@ -8,21 +8,33 @@
   float: left;
   display: inline-block;
   padding: 2px 8px;
-  border: 1px solid #ccd0d4;
+  border: 2px solid #ffffff;
   border-radius: 4px;
-  background-color: #f6f7f7;
-  color: #2c3338;
+  background-color: #40cc40;
+  color: #ffffff;
   font-size: 12px;
   line-height: 1.5;
+  font-weight: 600;
   text-decoration: none;
+  box-shadow: 0px 1px 4px rgba(40, 60, 40, 0.25);
 }
 
 .describe-attachment:hover,
 .describe-attachment:focus {
-  border-color: #8c8f94;
-  background-color: #f0f0f1;
-  color: #1d2327;
+  border-color: #ffffff;
+  background-color: #40cc40;
+  color: #ffffff;
   text-decoration: none;
+}
+
+.description_button,
+.describe-help,
+.wdescript a {
+  border: 2px solid #ffffff;
+  background-color: #40cc40;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0px 1px 4px rgba(40, 60, 40, 0.25);
 }
 
 .wd-describe-wrapper {
@@ -125,13 +137,15 @@
     position: absolute;
     z-index: 170000;
     padding: 4px;
-    background-color: #eeeeee;
-    color: #242;
-    box-shadow: 1px 1px 6px rgba(32, 64, 32, 0.5);
+    background-color: #ffffff;
+    color: #20ac20;
+    font-weight: 500;
     border-radius: 4px;
+    border: 2px solid #aaaaaa;
     overflow: hidden;
     max-height: 248px;
     height: fit-content !important;
+    box-shadow: 0px 1px 4px rgba(40, 60, 40, 0.25);
 }
 
 #attachment-details-alt-text-suggest em,
@@ -149,23 +163,25 @@
 #attachment-details-title-suggest span,
 #attachment-details-caption-suggest span,
 #attachment-details-description-suggest span {
-    color: #000;
+    color: #20ac20;
+    font-weight: 500;
     display: block;
     width: calc(100% - 16px);
     padding: 4px;
-    border: 1px solid #888;
+    border: 2px solid #aaaaaa;
     background-color: #fff;
     text-align: left;
     max-height: 200px;
     overflow-y: auto;
+    box-shadow: 0px 1px 4px rgba(40, 60, 40, 0.25);
 }
 
 #attachment-details-alt-text-suggest a,
 #attachment-details-title-suggest a,
 #attachment-details-caption-suggest a,
 #attachment-details-description-suggest a {
-    color: #242;
-    font-weight: bold;
+    color: #ffffff;
+    font-weight: 600;
     padding: 4px;
 }
 
@@ -181,11 +197,11 @@
     width: fit-content;
     display: block;
     padding: 6px;
-    border: 1px solid #333;
+    border: 2px solid #ffffff;
     border-radius: 6px;
-    background-color: #ccc;
-    color: #800;
-    font-weight: bold;
+    background-color: #40cc40;
+    color: #ffffff;
+    font-weight: 600;
     text-decoration: none;
 }
 
