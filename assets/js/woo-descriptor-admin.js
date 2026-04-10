@@ -370,12 +370,14 @@ jQuery(document).ready(function($) {
     function addDescribeLinksToMediaAttachmentDetails($container) {
         $container.find('.attachment-details').each(function() {
             const $details = $(this);
-            if ($details.find('.wd-describe-wrapper').length) {
+            const attachmentId = resolveAttachmentId($details);
+            if (!attachmentId) {
                 return;
             }
 
-            const attachmentId = resolveAttachmentId($details);
-            if (!attachmentId) {
+            const $existingWrapper = $details.find('.wd-describe-wrapper').first();
+            if ($existingWrapper.length) {
+                $existingWrapper.find('.describe-attachment, .wd-save-attachment').attr('data-attachment-id', attachmentId);
                 return;
             }
 
@@ -787,5 +789,11 @@ jQuery(document).ready(function($) {
 
     $(document).on('click', '.describe-bulk-button', handle_bulk_describe);
     $(document).on('click', '.wd-save-attachment', handle_save_attachment);
+
+    $(document).on('click', '.attachment-details .left, .attachment-details .right, .edit-media-header .left, .edit-media-header .right', function() {
+        setTimeout(function() {
+            addDescribeLinksToMediaAttachmentDetails($(document));
+        }, 50);
+    });
 
 });
